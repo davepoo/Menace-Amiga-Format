@@ -18,34 +18,38 @@ The aim of this is to...
 
 The source was published across the following editons of Amiga Format in 1990. Articles on how the source code worked were written up by Dave Jones to go with the source.
 
-* Amiga Format Issue 7 - February 1990 - Pages 63 to 68 - 'The Whole Truth About Games Programming'
-* Amiga Format Issue 8 - March 1990 - Pages 63 - 67 - 'The Whole Truth About Games Programming: 2'
-* Amiga Format Issue 9 - April 1990 - XXXXXXXX -'The Whole Truth About Games Programming: 3'
-* Amiga Format Issue 10 - May 1990 - Pages 85 to 89 -'The Whole Truth About Games Programming Part 4 aliens'
-* Amiga Format Issue 11 - June 1990 - XXXXXXXXX -'The Whole Truth About Games Programming Part 5 aliens 2'
-* Amiga Format Issue 12 - July 1990 - XXXXXXXXX to 158 - 'The Whole Truth About Games Programming Part 5 [sic] Collision Detection'
-* Amiga Format Issue 13 - August 1990 - Pages 127 to - 130 - 'The Whole Truth About Games Programming Part 7 The Guardian'
-
-* https://amr.abime.net/issue_163
-* https://amr.abime.net/issue_164
-* https://amr.abime.net/issue_165
-* https://amr.abime.net/issue_166
-* https://amr.abime.net/issue_167
-* https://amr.abime.net/issue_168
-* https://amr.abime.net/issue_169
-
+* Issue 7 - February 1990 - Pages 63 to 68 - 'The Whole Truth About Games Programming'
+* Issue 8 - March 1990 - Pages 63 - 67 - 'The Whole Truth About Games Programming: 2'
+* Issue 9 - April 1990 - Pages 63 - 67 -'The Whole Truth About Games Programming: 3'
+* Issue 10 - May 1990 - Pages 85 to 89 -'The Whole Truth About Games Programming Part 4 aliens'
+* Issue 11 - June 1990 - Pages 119 to 121 -'The Whole Truth About Games Programming Part 5 aliens 2'
+* Issue 12 - July 1990 - 155 to 158 - 'The Whole Truth About Games Programming Part 5 [sic] Collision Detection'
+* Issue 13 - August 1990 - Pages 127 to - 130 - 'The Whole Truth About Games Programming Part 7 The Guardian'
+* 
 Note that July 1990 edition says "Part 5" but is actually "Part 6" but does say "Games Programming 6" in the header of the page.
+
+ [You can find PDF scans of the articles in the AmigaFormat folder](AmigaFormat/), or alternatively use these 'Amiga Magazie Rack' links
+* Issue 7 - https://amr.abime.net/issue_163
+* Issue 8 - https://amr.abime.net/issue_164
+* Issue 9 - https://amr.abime.net/issue_165
+* Issue 10 - https://amr.abime.net/issue_166
+* Issue 11 - https://amr.abime.net/issue_167
+* Issue 12 - https://amr.abime.net/issue_168
+* Issue 13 - https://amr.abime.net/issue_169
 
 ## Cover Disk Code
 
+Coverdisk ADFs are in this repository under [AmigaFormat/CoverDiskADFs/](AmigaFormat/CoverDiskADFs)
+
 The code was built up each edition via the files on cover disks.
 The last coverdisk does contain all the source that was ever published, but a few of the files that were required are only available by pulling them from a previous cover disk.
-I have pulled all the files together in one place to create the newer source code.
+I have pulled all the files together in one place to create [the newer source code](Source).
 
 # Assembing on and Amiga
 
-The code has been going through changes to upgrade to Workbench 3.2, but I am still assembing in DevPac.
+The upgraded code is in the [Source/](Source) folder in this repository.
 
+The code has been going through changes to upgrade to Workbench 3.2, but I am still assembing in DevPac on an Amiga.
 * DevPac 3 (I am using DevPac 3.01 but later versions should probably work ) https://archive.org/download/CommodoreAmigaApplicationsADF
 * Workbench NDK 3.2 (I am using NDK3.2 Release 1) https://www.hyperion-entertainment.com/index.php/downloads
 
