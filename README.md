@@ -52,7 +52,7 @@ The code was built up each edition via the files on cover disks.
 The last coverdisk does contain all the source that was ever published, but a few of the files that were required are only available by pulling them from a previous cover disk.
 I have pulled all the files together in one place to create [the newer source code](Source).
 
-# Assembing on and Amiga
+# Assembing on the Amiga
 
 ![Devpac Assembling Screenshot](Images/MenaceAssembedScreenShot.png)
 
