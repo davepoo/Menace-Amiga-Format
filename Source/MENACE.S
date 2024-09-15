@@ -19,8 +19,9 @@
 	include 	libraries/dos_lib.i
 	include 	exec/exec_lib.i
 	include 	hardware/custom.i
+	include 	graphics/gfxbase.i	* @davepoo2 required to save the workbench view pointer during system take over
 
-_SysBase		equ	$4		* @davepoo2 wasnt defined in final part of the Amiga format source
+_SysBase		equ	$04		* @davepoo2 wasnt defined in final part of the Amiga format source
 Hardware		equ	$dff000
 SystemCopper1		equ	$26
 SystemCopper2		equ	$32
@@ -2793,30 +2794,116 @@ MemError
 	rts
 
 *******************************************************************************
+proc_MsgPort	=	92
+proc_CLI	=	172
+GfxLoadView	= 	-222
+GfxWaitTOF	= 	-270
 
+	even
+S_WBMsg		dc.l	0	; the workbench message we got on system takeover
+S_VBR		dc.l	0	; CPU vector base register
+S_ViewPointer	dc.l	0	; Old ViewPointer before takesystem
+	even
+
+* Supervisor function to get the CPU vector base register
+* @see _LVOSupervisor
+StoreVBR	
+	movec	VBR,d0		; doing this requires the assembler to be set to 68010 or 20
+	rte			; needs RTE to return from supervisor function
+	
 TakeSystem
+	move.l	a5,-(sp)	; save a5 because menace is using it (variables)
+	move.l	a1,-(sp)	; save a1 just in case
+	move.l 	a4,-(sp)	; save a4 just in case
+	move.l	_SysBase,a6	; a6 = system exec lib pointer
+		
+.FindThisTask
+	sub.l	a1,a1		; null a1
+	jsr	_LVOFindTask(a6); my task/process pointer in d0
+	move.l	d0,a4		; a4 = pointer to this process
+
+.CheckIsCLI
+	tst.l	proc_CLI(a4)	; if from CLU then skip workbench stuff
+	bne.b	.FromCLI	; skip workbench code
+	
+.GetWorkbenchMessage
+	lea.l	proc_MsgPort(a4),a0	; a0 = workbench MsgPort	
+	jsr	_LVOWaitPort(a6)	; wait for workbench message
+	lea.l	proc_MsgPort(a4),a0	; a0 = workbench MsgPort
+	jsr	_LVOGetMsg(a6)	; get the workbench message in d0
+	move.l	d0,S_WBMsg	; store the message to respond with when this process shuts down
+
+.FromCLI
+	jsr	_LVOForbid(a6)	; do not run other tasks
+	
+FindVBR
+	lea.l	StoreVBR(pc),a5		; _LVOSupervisor requires function to call in a5
+	jsr	_LVOSupervisor(a6)	; calls StoreVBR in d0
+	move.l	d0,S_VBR		; store the vbr offset
+		
+KillCopper
+	move.l GraphicsBase(pc),a6 		; a6 = Graphics Base
+	move.l gb_ActiView(a6),S_ViewPointer	; store the view pointer	
+	sub.l	a1,a1		; null a1
+	jsr	GfxLoadView(a6)	; load the view (with the null) (can#t find documenation for this but it appears to need the graphcis base pointer in A6, if not it will not work)
+	jsr	GfxWaitTOF(a6)	; wait one screen refresh
+	jsr	GfxWaitTOF(a6)	; wait another screen refresh (in case of interlaced mode is present)
+	
+	
+.StoreDMAandInterrupts
+	move.l 	#Hardware,a6
 	move.w	intenar(a6),SystemInts		save system interupts
 	move.w	dmaconr(a6),SystemDMA		and DMA settings
-	move.w	#$7fff,intena(a6)		kill everything!
-	move.w	#$7fff,dmacon(a6)
-	move.b	#%01111111,ICRA			kill keyboard
-	move.l	$68,Level2Vector		save these interrupt vectors
-	move.l	$6c,Level3Vector		as we will use our own 
+	move.w 	#$8000,d0			; SET/CLR bit SET
+	move.w	SystemInts(pc),d1
+	or.w	d0,d1				
+	move.w 	d1,SystemInts			; SET/CLR bit to SET
+	move.w	SystemDMA(pc),d1
+	or.w 	d0,d1
+	move.w	d1,SystemDMA			; SET/CLR bit to SET
+
+	btst.b	#14-8,dmaconr(a6); dummy blitter read
+.BlitterBusy
+	btst.b	#14-8,dmaconr(a6); check if the blitter is busy? note big-endian check in a word  so the 14th bit is offset by 8!
+	bne.b	.BlitterBusy	 ; wait for blitter if busy
+	
+	move.l	(sp)+,a4	; restore the a4
+	move.l	(sp)+,a1	; restore the a1
+	move.l	(sp)+,a5	; restore the a5 (menace is using it)
+	
+TakeSystem_Menace
+	move.w	#$3fff,intena(a6)		; disable all interrupts
+	move.w	#$01ff,dmacon(a6)		; disable all DMA
+	move.l	S_VBR(PC),a0			; a0 = CPU VBR Address
+	move.l	$68(a0),Level2Vector		save these interrupt vectors
+	move.l	$6c(a0),Level3Vector		as we will use our own
 	rts					keyboard & vblank routines
 
 FreeSystem
-	move.l	Level2Vector,$68	restore the system vectors
-	move.l	Level3Vector,$6c		and interrupts and DMA
-	move.l	GraphicsBase,a1			and replace the system
-	move.l	SystemCopper1(a1),Hardware+cop1lc	copper list
-	move.l	SystemCopper2(a1),Hardware+cop2lc
-	move.w	SystemInts,d0
-	or.w	#$c000,d0
-	move.w	d0,intena(a6)
-	move.w	SystemDMA,d0
-	or.w	#$8100,d0
-	move.w	d0,dmacon(a6)
-	move.b	#%10011011,ICRA	keyboard etc back on
+	move.l 	#Hardware,a6
+	btst.b	#14-8,dmaconr(a6); dummy blitter read
+.BlitterBusy2
+	btst.b	#14-8,dmaconr(a6); check if the blitter is busy? note big-endian check in a word  so the 14th bit is offset by 8!
+	bne.b	.BlitterBusy2	 ; wait for blitter if busy
+
+	move.l	S_VBR(PC),a0			; a0 = CPU VBR Address
+	move.l	Level2Vector,$68(a0)		; restore the system vectors
+	move.l	Level3Vector,$6c(a0)		; and interrupts and DMA
+	move.l	GraphicsBase(pc),a1		; and replace the system
+	move.l	gb_copinit(a1),Hardware+cop1lc	; copper lists
+	move.l	gb_LOFlist(a1),Hardware+cop2lc
+	move.w	SystemInts(pc),intena(a6)
+	move.w	SystemDMA(pc),dmacon(a6)
+
+RestoreSystemCopper
+	move.l	S_ViewPointer(pc),a1
+	move.l	GraphicsBase(pc),a6
+	jsr	GfxLoadView(a6)	; load the view (with the old system view) (can#t find documenation for this but it appears to need the graphcis base pointer in A6, if not it will not work)
+	jsr	GfxWaitTOF(a6)	; wait one screen refresh
+	jsr	GfxWaitTOF(a6)	; wait another frame in case of interlaced mode
+	
+; TODO : reply to workbench message
+
 	rts
 
 *******************************************************************************
