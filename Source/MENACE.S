@@ -1,6 +1,6 @@
 *****************************************************************************
 *						    			    *
-*	Amiga system takeover framework			    		    *
+*	Amiga system takeover famework			    		    *
 *	1988 Dave Jones, DMA Design			    		    *
 *						    			    *
 * Allows killing of system, allowing changing of all display & blitter	    *
@@ -14,11 +14,13 @@
 
 	section	Framework,code_c	
 
-	incdir		"fast:devpac/include/"
+*	incdir		"fast:devpac/include/"
+	include 	funcdef.i		* @davepoo2 implements FUNCDEF macro for devpac
 	include 	libraries/dos_lib.i
 	include 	exec/exec_lib.i
 	include 	hardware/custom.i
 
+_SysBase		equ	$4		* @davepoo2 wasnt defined in final part of the Amiga format source
 Hardware		equ	$dff000
 SystemCopper1		equ	$26
 SystemCopper2		equ	$32
@@ -2834,15 +2836,15 @@ DOSName		dc.b	'dos.library',0
 
 *******************************************************************************
 
-graphics	incbin	:foregrounds
-shipbase	include	:ships.s
-paths		include	:paths.s
-map		incbin	:map
-panel		incbin	:panel
-aliens		incbin	:aliens
-bonus.sprite	include	:bonus.s
-mine		include :mine.s
-guardian	incbin	:guardian
+graphics	incbin	foregrounds
+shipbase	include	ships.s
+paths		include	paths.s
+map		incbin	map
+panel		incbin	panel
+aliens		incbin	aliens
+bonus.sprite	include	bonus.s
+mine		include mine.s
+guardian	incbin	guardian
 
 missiletable	ds.b	512
 
@@ -2890,5 +2892,4 @@ screen0bgnds	ds.b	256
 screen1bgnds	ds.b	256
 fgnd.buffer	ds.b	2048
 	end
-
-                          
+	
