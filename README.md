@@ -56,7 +56,7 @@ I have pulled all the files together in one place to create [the newer source co
 
 ![Devpac Assembling Screenshot](Images/MenaceAssembedScreenShot.png)
 
-The upgraded code is in the [Source/](Source) folder in this repository. Open [Menace.s](Source/Menace.s) and assemble the run the created 'Menace' executable file.
+The upgraded code is in the [Source/](Source) folder in this repository. Open [MENACE.S](Source/MENACE.S) and assemble the run the created 'Menace' executable file.
 
 The code has been going through changes to upgrade to Workbench 3.2, but I am still assembing in DevPac on an Amiga.
 * DevPac 3 (I am using DevPac 3.01 but later versions should probably work ) https://archive.org/download/CommodoreAmigaApplicationsADF
