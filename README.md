@@ -1,32 +1,37 @@
 # Menace Amiga Format
 
- The 1988 Amiga game 'Menace' that was published in Amiga Format in 1990, this repo contains source code and changes that were made for the YouTube video series about it on http://www.youtube.com/@DavePoo2
+The 1988 Amiga game 'Menace' that was published in Amiga Format in 1990, this repo contains source code and changes that were made for the YouTube video series about it on http://www.youtube.com/@DavePoo2
  The plan is to upgrade this source to assemble and work for a more modern Amiga (source was written during the A1000/500 era of the Amiga)
 
 https://www.youtube.com/playlist?list=PLr783JgI3IBd9PZuc9WMmwwxoG2ic-NzB - Video series playlist
 
-The aim of this is to...
+![Amiga Format Cover](Images/AmigaFormatCover.png)
+![Menace Screenshot](Images/MenaceScreenShot02.png)
+
+The aim of this is...
 
 * Nostalgia - I read and learned from these articles back in the day, and I'd like to re-vist them
-* Take a look at some old Amiga source code, find out how it works and learn from it
-* Try to develop (as much as possible) like it was done in the good ol' days to see what we had to put up with (developing on the Amiga for the Amiga)
-* Upgrade the source to compile for Workbench 3.2 and work on other Amigas than just the A500. Possibly just upgrade to work on AGA machines (as we alreday have the non-AGA version in the release title)
-* Upgrade the source/game to work on the newer Amigas, not downgrade or cripple the Amiga to make the game work (WHDLoad can do that)
-* Preserve the source code, articles & coverdisks for the future (should they dissapear from other online sources)
+* To look at some old Amiga source code, find out how it works and learn from it
+* To try to develop (as much as possible) like it was done in the good ol' days to see what we had to put up with (developing on the Amiga for the Amiga)
+* To upgrade the source to compile for Workbench 3.2 and work on other Amigas than just the A500. Possibly just upgrade to work on AGA machines (as we alreday have the non-AGA version in the release title)
+* To upgrade the source/game to work on the newer Amigas, not downgrade or cripple the Amiga to make the game work (WHDLoad can do that)
+* To preserve the source code, articles & coverdisks for the future (should they dissapear from other online sources)
 
 # Amiga Format - Dave Jones / Menace Articles - 'The Whole Truth About Games Programming'
 
+![Dave Jones - The Truth](Images/AmigaFormatArticleHeader.png)
+
 The source was published across the following editons of Amiga Format in 1990. Articles on how the source code worked were written up by Dave Jones to go with the source.
 
-* Issue 7 - February 1990 - Pages 63 to 68 - 'The Whole Truth About Games Programming'
-* Issue 8 - March 1990 - Pages 63 - 67 - 'The Whole Truth About Games Programming: 2'
-* Issue 9 - April 1990 - Pages 63 - 67 -'The Whole Truth About Games Programming: 3'
-* Issue 10 - May 1990 - Pages 85 to 89 -'The Whole Truth About Games Programming Part 4 aliens'
-* Issue 11 - June 1990 - Pages 119 to 121 -'The Whole Truth About Games Programming Part 5 aliens 2'
-* Issue 12 - July 1990 - 155 to 158 - 'The Whole Truth About Games Programming Part 5 [sic] Collision Detection'
-* Issue 13 - August 1990 - Pages 127 to - 130 - 'The Whole Truth About Games Programming Part 7 The Guardian'
-* 
-Note that July 1990 edition says "Part 5" but is actually "Part 6" but does say "Games Programming 6" in the header of the page.
+* [Issue 7](AmigaFormat/AmigaFormat007-Feb90_DaveJonesLockerPart1.pdf) - February 1990 - Pages 63 to 68 - 'The Whole Truth About Games Programming'
+* [Issue 8](AmigaFormat/AmigaFormat008-Mar90_DaveJonesLockerPart2.pdf) - March 1990 - Pages 63 - 67 - 'The Whole Truth About Games Programming: 2'
+* [Issue 9](AmigaFormat/AmigaFormat009-Apr90_DaveJonesLockerPart3.pdf) - April 1990 - Pages 63 - 67 -'The Whole Truth About Games Programming: 3'
+* [Issue 10](AmigaFormat/AmigaFormat010-May90_DaveJonesLockerPart4.pdf) - May 1990 - Pages 85 to 89 -'The Whole Truth About Games Programming Part 4 aliens'
+* [Issue 11](AmigaFormat/AmigaFormat011-Jun90_DaveJonesLockerPart5.pdf) - June 1990 - Pages 119 to 121 -'The Whole Truth About Games Programming Part 5 aliens 2'
+* [Issue 12](AmigaFormat/AmigaFormat012-Jul90_DaveJonesLockerPart6.pdf) - July 1990 - 155 to 158 - 'The Whole Truth About Games Programming Part 5 [sic] Collision Detection'
+* [Issue 13](AmigaFormat/AmigaFormat013-Aug90_DaveJonesLockerPart7.pdf) - August 1990 - Pages 127 to - 130 - 'The Whole Truth About Games Programming Part 7 The Guardian'
+ 
+Note that July 1990 edition says "Part 5" but is actually "[Part 6](AmigaFormat/AmigaFormat012-Jul90_DaveJonesLockerPart6.pdf)" but does say "Games Programming 6" in the header of the page.
 
  [You can find PDF scans of the articles in the AmigaFormat folder](AmigaFormat/), or alternatively use these 'Amiga Magazie Rack' links
 * Issue 7 - https://amr.abime.net/issue_163
@@ -39,6 +44,8 @@ Note that July 1990 edition says "Part 5" but is actually "Part 6" but does say 
 
 ## Cover Disk Code
 
+![Coverdisk Feb 1990](Images/Coverdisks/af07_1990_02_d1.jpg)
+
 Coverdisk ADFs are in this repository under [AmigaFormat/CoverDiskADFs/](AmigaFormat/CoverDiskADFs)
 
 The code was built up each edition via the files on cover disks.
@@ -47,7 +54,9 @@ I have pulled all the files together in one place to create [the newer source co
 
 # Assembing on and Amiga
 
-The upgraded code is in the [Source/](Source) folder in this repository.
+![Devpac Assembling Screenshot](Images/MenaceAssembedScreenShot.png)
+
+The upgraded code is in the [Source/](Source) folder in this repository. Open [Menace.s](Source/Menace.s) and assemble the run the created 'Menace' executable file.
 
 The code has been going through changes to upgrade to Workbench 3.2, but I am still assembing in DevPac on an Amiga.
 * DevPac 3 (I am using DevPac 3.01 but later versions should probably work ) https://archive.org/download/CommodoreAmigaApplicationsADF
@@ -58,11 +67,22 @@ The code has been going through changes to upgrade to Workbench 3.2, but I am st
 These are the settings I am using to assemble correctly in DevPac 3 on the Amiga.
 
 * Assembler Control Include folder is set to the :NDK3.2/Include_I (go to Settings -> Assember -> Control), and the 'Headers' is left blank (DevPac will have some WB 2 includes .gs file in there by default )
+
+![Assembler Control Screenshot](Images/DevPac2_AssemblerControlSettings.png)
+
 * Assembler Options Processor is set to 68020 (go to Settings -> Assember -> Options)
+
+![Assembler Options Screenshot](Images/DevPac3_AssemberOptionsSettings.png)
+
 * 'Settings -> Assemble To Disk' is checked to out the file after assembly.
+
+![Assemble To Disk Screenshot](Images/DevPac3_AssembleToDisk.png)
 
 # Other Useful Resources
 
 * https://www.amazon.co.uk/Bare-Metal-Amiga-Programming-OCS-ECS/dp/B09GJQ3SF6 - Edwin Th van den Oosterkamp (Author) - Bare-Metal Amiga Programming: For OCS, ECS and AGA
+
+![Bare Metal Amiga Programming Book](Images/BareMetalAmigaProgramming.jpg)
+
 
 
