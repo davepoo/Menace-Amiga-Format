@@ -16,9 +16,15 @@
 
 *	incdir		"fast:devpac/include/"
 	include 	funcdef.i		* @davepoo2 implements FUNCDEF macro for devpac
+	include 	menace.i		* @davepoo2 macros etc written to support menace
 	include 	libraries/dos_lib.i
 	include 	exec/exec_lib.i
+	IFND	HARDWARE_CUSTOM_I
 	include 	hardware/custom.i
+	ENDC
+	IFND	HARDWARE_DMABITS_I
+	include		hardware/dmabits.i	* @davepoo2 using this instead of magic numbers for damacon bits
+	ENDC
 	include 	graphics/gfxbase.i	* @davepoo2 required to save the workbench view pointer during system take over
 
 _SysBase		equ	$04		* @davepoo2 wasnt defined in final part of the Amiga format source
@@ -2260,13 +2266,9 @@ draw.missile
 	add.l	d1,d0
 	move.l	d0,bltcpt(a6)			d0 = background
 	move.w	#96,bltcmod(a6)
-	move.w	d3,bltsize(a6)			d3 = blitsize
-	
-waitcollision
-	btst	#14-8,dmaconr(a6)
-	bne	waitcollision	
-	
-	btst	#5,dmaconr(a6)
+	move.w	d3,bltsize(a6)			d3 = blitsize	
+	blitter_wait				@davepoo2 wait for the blit to finish before testing the result or fast ram/fast cpu etc will test the bit before it finished			
+	btst_dmaconr DMAB_BLTNZERO		@daveoo2 test blitter using macro that accounts for the big endianness of the 68000 processors
 	rts
 
 or.foregnds

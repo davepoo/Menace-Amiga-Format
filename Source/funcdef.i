@@ -1,5 +1,5 @@
 *****************************************************************************
-* Devpac Compacible Implementation of FUNCDEF macro
+* Devpac Compatible Implementation of FUNCDEF macro
 * Required by exec/exec_lib.i
 * 2024 www.youtube.com/@Davepoo2					    			    *					    			    *
 *****************************************************************************
