@@ -2261,6 +2261,11 @@ draw.missile
 	move.l	d0,bltcpt(a6)			d0 = background
 	move.w	#96,bltcmod(a6)
 	move.w	d3,bltsize(a6)			d3 = blitsize
+	
+waitcollision
+	btst	#14-8,dmaconr(a6)
+	bne	waitcollision	
+	
 	btst	#5,dmaconr(a6)
 	rts
 
