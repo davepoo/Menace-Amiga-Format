@@ -2267,8 +2267,8 @@ draw.missile
 	move.l	d0,bltcpt(a6)			d0 = background
 	move.w	#96,bltcmod(a6)
 	move.w	d3,bltsize(a6)			d3 = blitsize	
-	blitter_wait				@davepoo2 wait for the blit to finish before testing the result or fast ram/fast cpu etc will test the bit before it finished			
-	btst_dmaconr DMAB_BLTNZERO		@daveoo2 test blitter using macro that accounts for the big endianness of the 68000 processors
+	blitter_wait				@davepoo2 wait for the blit to finish before testing the result or fast ram/fast cpu etc will test the bit before it finished
+	btst_dmaconr DMAB_BLTNZERO		@davepoo2 test blitter using macro that accounts for the big endianness of the 68000 processors
 	rts
 
 or.foregnds

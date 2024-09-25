@@ -17,7 +17,7 @@ btst_dmaconr	MACRO
 
 ; wait for the blitter to finish
 ; assumes the hardware base is in a6
-blitter_wait MACRO	; unique local name for loop
+blitter_wait MACRO
 \@	
 	btst.b	#DMAB_BLTDONE-8,dmaconr(a6)
 	bne	\@
