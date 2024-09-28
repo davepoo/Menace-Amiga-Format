@@ -324,20 +324,24 @@ fgndloop
 	rts
 
 blitfgnd
+	blitter_wait
 	move.l	d1,bltdpt(a6)		blit a 16x16 pixel block
 	move.l	d4,bltapt(a6)		into the foreground screen
 	move.w	#$0401,bltsize(a6)	unmasked with no shift
 	add.l	#32,d4
+	blitter_wait
 	move.l	d2,bltdpt(a6)
 	move.l	d4,bltapt(a6)
 	move.w	#$0401,bltsize(a6)
 	add.l	#32,d4
+	blitter_wait
 	move.l	d3,bltdpt(a6)
 	move.l	d4,bltapt(a6)
 	move.w	#$0401,bltsize(a6)
 	rts
 
 setupblit
+	blitter_wait
 	move.w	#$09f0,bltcon0(a6)		minterm for D = A
 	clr.w	bltcon1(a6)
 	clr.w	bltamod(a6)			data is stored sequentially
@@ -1207,21 +1211,12 @@ ship.to.copper
 	move.w	d3,26(a0)
 	rts
 
-**************************************************************************
-
-change.ship
-	clr.w	d0
-	move.b	ship.status(a5),d0	1 = canons, 2 = lasers, 3 = both
-	lea	ship1.2(pc),a0
-	mulu	#1680,d0		968 bytes for the four sprites
-	add.l	d0,a0			per ship
-	move.l	a0,shipaddress(a5)	store the ship address
-	rts
 
 **************************************************************************
 
 restorebgnds
 	bsr	getscreeninfo
+	blitter_wait
 	clr.w	bltamod(a6)
 	move.l	d0,bltapt(a6)		set blitter A channel to the saved
 	clr.w	bltcon1(a6)		background data
@@ -1234,12 +1229,15 @@ restoreloop
 	lsl.w	#1,d1
 	move.w	#100,d2			subtract from the screen width
 	sub.w	d1,d2			to give the destination modulo
+	blitter_wait
 	move.w	d2,bltdmod(a6)
 	move.w	#$09f0,bltcon0(a6)	use D = A for the blit
 	move.l	(a0)+,bltdpt(a6)	and do all three planes.
 	move.w	d3,bltsize(a6)
+	blitter_wait
 	move.l	(a0)+,bltdpt(a6)
 	move.w	d3,bltsize(a6)
+	blitter_wait
 	move.l	(a0)+,bltdpt(a6)
 	move.w	d3,bltsize(a6)
 	bra	restoreloop
@@ -1248,6 +1246,7 @@ savebgnds
 	bsr	check.end.screen	watch out for screen wraparound
 	bsr	coords.to.pf1offsets	convert pixel coords to byte offsets
 	move.w	#aliensize,d3
+	blitter_wait
 	move.w	#94,bltamod(a6)
 	clr.w	bltdmod(a6)
 	clr.w	bltcon1(a6)
@@ -1258,7 +1257,20 @@ savebgnds
 
 **************************************************************************
 
+change.ship
+	clr.w	d0
+	move.b	ship.status(a5),d0	1 = canons, 2 = lasers, 3 = both
+	lea	ship1.2(pc),a0
+	mulu	#1680,d0		968 bytes for the four sprites
+	add.l	d0,a0			per ship
+	move.l	a0,shipaddress(a5)	store the ship address
+	rts
+
+
+**************************************************************************
+
 drawbobs
+	blitter_wait
 	move.w	#94,bltdmod(a6)		set up the destination modulos
 	move.w	#94,bltcmod(a6)
 	clr.l	d6			d6 will hold an offset if the
@@ -1683,6 +1695,7 @@ save.next
 **************************************************************************
 
 draw.aliens
+	blitter_wait
 	clr.w	bltalwm(a6)
 	moveq	#11,d7
 	bsr	getscreeninfo
@@ -1713,6 +1726,7 @@ draw.alien2
 draw.next2
 	subq	#6,a4
 	dbf	d7,draw.alien2
+	blitter_wait
 	move.w	#$ffff,bltalwm(a6)
 	rts	
 	
@@ -1722,18 +1736,21 @@ blit.to.backgnd
 	addq	#4,a0			skip the hidden words
 	move.l	(a0)+,d5		get the screen offset
 	add.l	d6,d5
+	blitter_wait
 	move.l	d5,bltcpt(a6)		setup the screen pointers
 	move.l	d5,bltdpt(a6)
 	move.l	a2,bltapt(a6)		setup the bob mask
 	move.w	d3,bltsize(a6)		and blit the bob to the screen
 	move.l	(a0)+,d5
 	add.l	d6,d5
+	blitter_wait
 	move.l	d5,bltcpt(a6)
 	move.l	d5,bltdpt(a6)
 	move.l	a2,bltapt(a6)
 	move.w	d3,bltsize(a6)		plane 2
 	move.l	(a0)+,d5
 	add.l	d6,d5
+	blitter_wait
 	move.l	d5,bltcpt(a6)
 	move.l	d5,bltdpt(a6)
 	move.l	a2,bltapt(a6)
@@ -1745,10 +1762,12 @@ blit.to.backgnd
 blit.to.buffer
 	tst.l	d6			copy the background where a 
 	beq	no.blit			bob  is to be drawn into
+	blitter_wait
 	move.l	d0,bltdpt(a6)		the buffer
 	addq	#4,a0
 	move.l	(a0)+,bltapt(a6)
 	move.w	d3,bltsize(a6)
+	blitter_wait
 	move.l	(a0)+,bltapt(a6)
 	move.w	d3,bltsize(a6)
 	addq	#4,a0
@@ -2223,6 +2242,7 @@ draw.missile
 	move.w	d3,d0				d5 & d6 = foreground buffer
 	lsr.w	#4,d0				height*4 = number of bytes in 
 	add.w	d0,d6				a an or'd foreground
+	blitter_wait
 	clr.w	bltcmod(a6)
 	clr.w	bltamod(a6)
 	clr.w	bltdmod(a6)
@@ -2235,9 +2255,11 @@ draw.missile
 	move.w	d2,bltcon0(a6)			which shows only where missile
 	move.l	d5,bltcpt(a6)			can be drawn
 	move.w	d3,bltsize(a6)
+	blitter_wait
 	move.l	d5,bltcpt(a6)
 	move.w	d3,bltsize(a6)
 
+	blitter_wait
 	move.w	#88,bltdmod(a6)
 	move.w	#88,bltbmod(a6)
 	clr.w	bltcon1(a6)
@@ -2246,6 +2268,7 @@ draw.missile
 	move.l	(a0),bltbpt(a6)			drawing where there is no 
 	move.l	(a0)+,bltdpt(a6)		foreground
 	move.w	d3,bltsize(a6)
+	blitter_wait
 	move.l	(a0),bltbpt(a6)
 	move.l	(a0)+,bltdpt(a6)
 	move.w	d3,bltsize(a6)
@@ -2257,6 +2280,7 @@ draw.missile
 	bsr	coords.to.pf1offsets		get pf1 offset
 	ror.w	#4,d2				shift the scroll value
 	or.w	#$aa0,d2			use D = A.C
+	blitter_wait
 	move.w	d2,bltcon0(a6)			with D turned off
 	move.l	a1,bltapt(a6)			a1 = sprite
 	move.l	a0,-(sp)
@@ -2272,6 +2296,7 @@ draw.missile
 	rts
 
 or.foregnds
+	blitter_wait
 	move.w	#88,bltamod(a6)			or the two foregrounds together
 	move.w	#88,bltbmod(a6)
 	clr.w	bltdmod(a6)
@@ -2293,6 +2318,7 @@ or.foregnds
 erase.missiles
 	move.l	#missiletable,a0
 	move.l	#fgnd.buffer,a1
+	blitter_wait
 	clr.w	bltcon1(a6)
 	clr.w	bltamod(a6)			a = or'd fgnd
 	move.w	#$0dc0,bltcon0(a6)		D=A.B
@@ -2304,10 +2330,12 @@ eraseloop
 	clr.w	(a0)+
 	move.w	d0,d1
 	lsr.w	#4,d1
+	blitter_wait
 	move.l	(a0),bltbpt(a6)
 	move.l	(a0)+,bltdpt(a6)
 	move.l	a1,bltapt(a6)
 	move.w	d0,bltsize(a6)
+	blitter_wait
 	move.l	(a0),bltbpt(a6)
 	move.l	(a0)+,bltdpt(a6)
 	move.l	a1,bltapt(a6)
