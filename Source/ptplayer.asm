@@ -215,13 +215,12 @@ VBLANK_MUSIC	equ	NO_TIMERS
 ; need at least 550.
 DMADELAY	equ	576		; was 496
 
-
 ; exec.library (OSCOMPAT)
-_LVOAllocSignal	equ	-330
-_LVOFreeSignal	equ	-336
-_LVOOpenDevice	equ	-444
-_LVOCloseDevice	equ	-450
-_LVOOpenResource equ	-498
+*_LVOAllocSignal	equ	-330
+*_LVOFreeSignal	equ	-336
+*_LVOOpenDevice	equ	-444
+*_LVOCloseDevice	equ	-450
+*_LVOOpenResource equ	-498
 
 ; cia.resource (OSCOMPAT)
 _LVOAddICRVector equ	-6

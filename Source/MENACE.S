@@ -3014,5 +3014,9 @@ buffer1		ds.b	6144
 screen0bgnds	ds.b	256
 screen1bgnds	ds.b	256
 fgnd.buffer	ds.b	2048
+
+
+	include ptplayer.asm
 	end
+	
 	
