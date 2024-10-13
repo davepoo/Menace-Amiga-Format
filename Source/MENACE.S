@@ -9,7 +9,17 @@
 * DOS routines for loading must be called BEFORE killing the system   	    *
 *						    			    *
 * Written using Devpac2					    		    *
-*						    			    *
+*
+* ---------------------
+* Updates 2024 by DavePoo2
+* http://github.com/davepoo/Menace-Amiga-Format
+* http://youtube.com/@DavePoo2
+*
+* - Assembing with NDK 3.2
+* - Fixed startup/shutdown routine to work on AGA/68020/Workbench 3.2
+* - Added blitter waits where appropriate to fix issues on AGA/68020+
+* - Assembling with Devpac 3.01					    			 
+*
 *****************************************************************************
 
 	section	Framework,code_c	
@@ -2896,12 +2906,7 @@ KillCopper
 	move.w	SystemDMA(pc),d1
 	or.w 	d0,d1
 	move.w	d1,SystemDMA			; SET/CLR bit to SET
-
-	btst.b	#14-8,dmaconr(a6); dummy blitter read
-.BlitterBusy
-	btst.b	#14-8,dmaconr(a6); check if the blitter is busy? note big-endian check in a word  so the 14th bit is offset by 8!
-	bne.b	.BlitterBusy	 ; wait for blitter if busy
-	
+	blitter_wait
 	move.l	(sp)+,a4	; restore the a4
 	move.l	(sp)+,a1	; restore the a1
 	move.l	(sp)+,a5	; restore the a5 (menace is using it)
@@ -2916,11 +2921,7 @@ TakeSystem_Menace
 
 FreeSystem
 	move.l 	#Hardware,a6
-	btst.b	#14-8,dmaconr(a6); dummy blitter read
-.BlitterBusy2
-	btst.b	#14-8,dmaconr(a6); check if the blitter is busy? note big-endian check in a word  so the 14th bit is offset by 8!
-	bne.b	.BlitterBusy2	 ; wait for blitter if busy
-
+	blitter_wait
 	move.l	S_VBR(PC),a0			; a0 = CPU VBR Address
 	move.l	Level2Vector,$68(a0)		; restore the system vectors
 	move.l	Level3Vector,$6c(a0)		; and interrupts and DMA
