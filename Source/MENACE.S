@@ -18,7 +18,8 @@
 * - Assembing with NDK 3.2
 * - Fixed startup/shutdown routine to work on AGA/68020/Workbench 3.2
 * - Added blitter waits where appropriate to fix issues on AGA/68020+
-* - Assembling with Devpac 3.01					    			 
+* - Assembling with Devpac 3.01	
+* - Using PtPlayer by Frank Wille https://se.aminet.net/mus/play/ptplayer.readme 				    			 
 *
 *****************************************************************************
 
@@ -123,13 +124,14 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	
 	
 ******	music init (ptplayer) ***********
+	move	S_VBR,a0	; a0 Vector Base Register
+	moveq	#1,d0		; d0 PAL/NTSC - 0 is NTSC
 	jsr	_mt_install	; setup cia interrupts
 	lea	levelmusic,a0	; a0 pointer to mod file to play
 	moveq	#0,d0		; d0 mod start location (pattern 0) 
 	move	d0,a1		; a1 pointer to the samples
 	jsr	_mt_init	; initialise mod file
 	move.b	#1,_mt_Enable	; start the music
-
 
 *******************************************************************************
 
@@ -2947,6 +2949,11 @@ RestoreSystemCopper
 	jsr	GfxLoadView(a6)	; load the view (with the old system view) (can#t find documenation for this but it appears to need the graphcis base pointer in A6, if not it will not work)
 	jsr	GfxWaitTOF(a6)	; wait one screen refresh
 	jsr	GfxWaitTOF(a6)	; wait another frame in case of interlaced mode
+	
+Music
+	move.l	#Hardware,a6
+	jsr	_mt_end		; stop the music
+	jsr	_mt_remove	; unregister interrupts
 	
 ; TODO : reply to workbench message
 
