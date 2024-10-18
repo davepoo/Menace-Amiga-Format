@@ -35,8 +35,8 @@
 	IFND	HARDWARE_DMABITS_I
 	include		hardware/dmabits.i	* @davepoo2 using this instead of magic numbers for damacon bits
 	ENDC
-	include 	graphics/gfxbase.i	* @davepoo2 required to save the workbench view pointer during system take over
-
+	include 	graphics/gfxbase.i	* @davepoo2 required to save the workbench view pointer during system take over	
+	
 _SysBase		equ	$04		* @davepoo2 wasnt defined in final part of the Amiga format source
 Hardware		equ	$dff000
 SystemCopper1		equ	$26
@@ -110,7 +110,7 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 
 	move.l	#Hardware,a6
 	jsr	TakeSystem
-
+	
 *******************************************************************************
 
 	move.l	#$dff000,a6		a6 ALWAYS point to base of
@@ -120,6 +120,16 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	move.w	#$87e0,dmacon(a6)	enable copper,sprite,blitter
 	move.w	#$7fff,intreq(a6)	clear all int request flags
 	move.w	#$0c30,clxcon(a6)
+	
+	
+******	music init (ptplayer) ***********
+	jsr	_mt_install	; setup cia interrupts
+	lea	levelmusic,a0	; a0 pointer to mod file to play
+	moveq	#0,d0		; d0 mod start location (pattern 0) 
+	move	d0,a1		; a1 pointer to the samples
+	jsr	_mt_init	; initialise mod file
+	move.b	#1,_mt_Enable	; start the music
+
 
 *******************************************************************************
 
@@ -2942,6 +2952,7 @@ RestoreSystemCopper
 
 	rts
 
+
 *******************************************************************************
 
 Level2Vector		dc.l	0
@@ -2968,6 +2979,8 @@ aliens		incbin	aliens
 bonus.sprite	include	bonus.s
 mine		include mine.s
 guardian	incbin	guardian
+levelmusic	incbin	spice.mod
+
 
 missiletable	ds.b	512
 
@@ -3015,8 +3028,7 @@ screen0bgnds	ds.b	256
 screen1bgnds	ds.b	256
 fgnd.buffer	ds.b	2048
 
-
-	include ptplayer.asm
+	include 	ptplayer.asm
 	end
 	
 	
