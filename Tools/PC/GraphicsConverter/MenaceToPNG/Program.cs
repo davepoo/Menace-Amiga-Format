@@ -12,7 +12,8 @@ class MenanceTools
         MenanceAliensToPNG MenaceToPNG = new MenanceAliensToPNG( args );
         MenaceToPNG.Run();
 
-        MenaceBackgroundsToPNG menaceBackgroundsToPNG = new MenaceBackgroundsToPNG( args );
+        MenaceBackgroundsToPNG MenaceBackgroundsToPNG = new MenaceBackgroundsToPNG( args );
+        MenaceBackgroundsToPNG.Run();
     }
 }
 
@@ -234,7 +235,12 @@ class MenanceAliensToPNG
 };
 
 /** Menace backgrounds are stored in Meance.s with the label "backgrounds"
- They are 2 bitplanes */
+  Backgrounds are made up of blocks that are (2 bytes x 16 high x 2 planes) with a max of 1024 bytes for all the data, 
+  so there are 1024 / 64 = 16 blocks stored in the data.
+  
+  Note the code in Menace.s implies there is 16 blocks (1024 byte) but the data only seems
+  to contain 12 blocks (768 bytes), so if 2nd level was added it could corrupt or crash??
+   */
 class MenaceBackgroundsToPNG
 {
         /** Where to read the Menace raw graphics from */
@@ -243,7 +249,15 @@ class MenaceBackgroundsToPNG
     String OutputPath;
 
     /** The numbers read from Menace.s "backgrounds" */
-    List<UInt32> BackgroundsRawData;
+    List<byte> BackgroundsRawData;
+    
+    const int NumBitPlanes = 2;
+    const int BlockWidthBytes = BlockWidthPixels / 8;
+    const int BlockWidthPixels = 16;
+    const int BlockHeightPixels = 16;
+    const int BlockBytesPerBitPlane = BlockWidthBytes * BlockHeightPixels;
+    const int BlockBytes = BlockBytesPerBitPlane * NumBitPlanes;
+    const int NumBlocks = 12;   //see note in header, comments/code say 16, but there are only 12
 
     public MenaceBackgroundsToPNG( string[] args )
     {
@@ -273,8 +287,8 @@ class MenaceBackgroundsToPNG
         // Load and parse the backgrounds from a text file pasted from menace.s, turn it into a list of raw numbers
         using ( StreamReader BackgroundsStream = new StreamReader( DataPath + "Backgrounds.txt" ) )
         {
-            const int ExpectedNumberOfWordsRead = 12 * 32;
-            BackgroundsRawData = new List<UInt32>( ExpectedNumberOfWordsRead );
+            const int ExpectedNumberOfBytesRead = 12 * 32 * sizeof(UInt16);
+            BackgroundsRawData = new List<byte>( ExpectedNumberOfBytesRead );
             String line;
             while ((line = BackgroundsStream.ReadLine()) != null)
             {
@@ -292,13 +306,54 @@ class MenaceBackgroundsToPNG
                         Debug.Assert( TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $" );
                         TextAsHex[i] = TextAsHex[i].Replace("$", "");
                         int HexValue = int.Parse( TextAsHex[i], System.Globalization.NumberStyles.HexNumber );
-                        BackgroundsRawData.Add( (UInt32)HexValue );
-                        Console.WriteLine(TextAsHex[i] + " = " + HexValue);
+                        BackgroundsRawData.Add( (byte)((HexValue >>> 8) & 0xFF) );
+                        BackgroundsRawData.Add( (byte)(HexValue & 0xFF) );
+                        
+                        //Console.WriteLine(TextAsHex[i] + " = " + HexValue);
                     }
                 }
             }
 
-            Debug.Assert( BackgroundsRawData.Count() == ExpectedNumberOfWordsRead, "Expected "+ExpectedNumberOfWordsRead+" words to be read for the backgrounds" );
+            Debug.Assert( BackgroundsRawData.Count() == ExpectedNumberOfBytesRead, "Expected "+ExpectedNumberOfBytesRead+" bytes to be read for the backgrounds" );
         }
     }    
+
+    public void Run()
+    {
+        // Turn #BackgroundsRawData into a PNG
+        Bitmap bmp = new(BlockWidthPixels,BlockHeightPixels * NumBlocks);
+
+        String FileName = "backgrounds.png";
+        Console.WriteLine("Writing: " + FileName );
+
+        for (int BlockIndex = 0; BlockIndex < NumBlocks; BlockIndex++)
+        {            
+            for (int Row = 0; Row < BlockHeightPixels; Row++)
+            {
+                for (int i = 0; i < BlockWidthBytes; i++)
+                {
+                    int BlockByteStart = BlockIndex * (BlockBytesPerBitPlane * NumBitPlanes);
+                    int ByteIndex = BlockByteStart + (Row * BlockWidthBytes) + i;
+                    byte b0 = BackgroundsRawData[ByteIndex];
+                    byte b1 = BackgroundsRawData[ByteIndex + BlockBytesPerBitPlane];
+
+                    // Write X,y into bitmap
+                    int y = Row + (BlockIndex * BlockHeightPixels);
+                    for (int Bit = 0; Bit < 8; Bit++)
+                    {
+                        int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1); 
+                        int x = (i * 8) + (7 - Bit);
+                        //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
+                        Color MenaceColor = Color.FromArgb( 0xFF, b * 16, b * 16, b * 16 ); 
+                        //TODO(davepop2): Where is the colour palette stored? (in every alien colour palette? or in level.colours ??)
+                        // The above code is just converting the palette index into RGB (temp)
+                        bmp.SetPixel( x, y, MenaceColor );
+                    }
+                }
+            }
+        }
+
+        Console.WriteLine( "Writing: " + FileName );
+        bmp.Save( OutputPath + FileName, ImageFormat.Png );
+    }
 };
