@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Imaging;
 
 // DavePoo2 - May 2025
@@ -10,6 +11,8 @@ class MenanceTools
     { 
         MenanceAliensToPNG MenaceToPNG = new MenanceAliensToPNG( args );
         MenaceToPNG.Run();
+
+        MenaceBackgroundsToPNG menaceBackgroundsToPNG = new MenaceBackgroundsToPNG( args );
     }
 }
 
@@ -228,4 +231,74 @@ class MenanceAliensToPNG
 
         return TotalNumSprites;
     }
+};
+
+/** Menace backgrounds are stored in Meance.s with the label "backgrounds"
+ They are 2 bitplanes */
+class MenaceBackgroundsToPNG
+{
+        /** Where to read the Menace raw graphics from */
+    String DataPath;
+
+    String OutputPath;
+
+    /** The numbers read from Menace.s "backgrounds" */
+    List<UInt32> BackgroundsRawData;
+
+    public MenaceBackgroundsToPNG( string[] args )
+    {
+        Console.WriteLine("Menace 'Backgrounds' to PNG - DavePoo2 May 2025 - v1.00");
+
+        if ( args.Length == 0 )
+        {
+            throw new Exception("Expected the first argument to be the path to the data to process");
+        }
+        else
+        {
+            const int DataPathIndex = 0;
+            DataPath = args[DataPathIndex] + "\\";
+        }
+
+        OutputPath = DataPath + "\\PNG\\";
+
+        Console.WriteLine("DataPath: " + DataPath);
+        Console.WriteLine("OutputPath: " + OutputPath);
+
+        ParseBackgrounds();
+    }
+
+    /** Initialise a data structure for the backgrounds to be read out of the text file */
+    void ParseBackgrounds()
+    {
+        // Load and parse the backgrounds from a text file pasted from menace.s, turn it into a list of raw numbers
+        using ( StreamReader BackgroundsStream = new StreamReader( DataPath + "Backgrounds.txt" ) )
+        {
+            const int ExpectedNumberOfWordsRead = 12 * 32;
+            BackgroundsRawData = new List<UInt32>( ExpectedNumberOfWordsRead );
+            String line;
+            while ((line = BackgroundsStream.ReadLine()) != null)
+            {
+                line = line.Replace("backgrounds","");
+                line = line.Replace("DC.W", "");
+                line = line.Trim();
+                Console.WriteLine(line);
+
+                if ( line != "" )
+                {
+                    String[] TextAsHex = line.Split(","); 
+                    for (int i = 0; i < TextAsHex.Length; i++)
+                    {
+                        TextAsHex[i] = TextAsHex[i].Trim();
+                        Debug.Assert( TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $" );
+                        TextAsHex[i] = TextAsHex[i].Replace("$", "");
+                        int HexValue = int.Parse( TextAsHex[i], System.Globalization.NumberStyles.HexNumber );
+                        BackgroundsRawData.Add( (UInt32)HexValue );
+                        Console.WriteLine(TextAsHex[i] + " = " + HexValue);
+                    }
+                }
+            }
+
+            Debug.Assert( BackgroundsRawData.Count() == ExpectedNumberOfWordsRead, "Expected "+ExpectedNumberOfWordsRead+" words to be read for the backgrounds" );
+        }
+    }    
 };
