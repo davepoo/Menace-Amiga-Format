@@ -145,7 +145,7 @@ class MenanceAliensToPNG
                             byte b0 = Buffer[ByteIndex];
                             byte b1 = Buffer[ByteIndex + BytesPerBitPlane];
                             byte b2 = Buffer[ByteIndex + (BytesPerBitPlane * 2)];
-                            byte bMask = Buffer[ByteIndex + (BytesPerBitPlane * 3)];    // The mask is not used to make the png as colour index 0 is used as transparent 
+                            byte Mask = Buffer[ByteIndex + (BytesPerBitPlane * 3)];
 
                             // Write X,y into bitmap
                             int y = Row + (AlienSpriteIndex * SpriteHeight);
@@ -155,6 +155,8 @@ class MenanceAliensToPNG
                                 int x = (i * 8) + (7 - Bit);
                                 //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
                                 Color MenaceColor = Aliens[AlienIndex].ColorForIndex( b ); 
+                                int Alpha = (((Mask >>> Bit) & 0b1) == 1) ? 0xFF : 0;   //Get the mask bit                               
+                                MenaceColor = Color.FromArgb( Alpha, MenaceColor );
                                 bmp.SetPixel( x, y, MenaceColor );
                             }
                         }
