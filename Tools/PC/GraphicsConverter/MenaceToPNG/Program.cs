@@ -63,11 +63,17 @@ struct Alien
         const int MaxColors = 8;
         int I = Index % MaxColors;
         UInt32 RawColor = MenaceColours[I];
+        return Amiga4BitColorToRGBColor( RawColor );
+    }
+
+    /** Convert Amiga 4-bit color value to RGB Color */
+   public static Color Amiga4BitColorToRGBColor( UInt32 RawColor )
+    {
         // Convert 4bit color to RGB
         const int FourBitShift = 4;
         const int FourBitMask = 0xF;
         const int FourBitToByte = 16; 
-        int A = I == 0 ? 0x0 : 0xFF;
+        int A = 0xFF;
         uint B = ((RawColor >>> 0x0) & FourBitMask) * FourBitToByte;
         uint G = ((RawColor >>> FourBitShift) & FourBitMask) * FourBitToByte;
         uint R = ((RawColor >>> (FourBitShift * 2)) & FourBitMask) * FourBitToByte;
@@ -234,6 +240,72 @@ class MenanceAliensToPNG
     }
 };
 
+
+/** Convert a number of colours from assembly source code into a palette of colours */ 
+class SourceCodeToColorPalette
+{
+    /** Where to read the Menace raw palette from */
+    String DataPath;
+
+    /** The source file name */
+    String FileName;
+
+    /** The palette we converted from the file */
+    List<Color> Palette;
+
+   public SourceCodeToColorPalette( String InDataPath, String InFileName )
+    {
+        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.00");
+        DataPath = InDataPath + "\\";
+        FileName = InFileName;
+        Palette = new List<Color>();
+        Console.WriteLine("DataPath: " + DataPath + "\\" + FileName);
+        ParsePalette();
+    }
+
+    void ParsePalette()
+    {
+        // Load and parse the colours from a text file pasted from menace.s
+        Console.WriteLine( "Reading Palette For:"  + FileName );
+        using StreamReader ColoursStream = new StreamReader( DataPath + FileName ); 
+
+        String RawColours;
+        while ((RawColours = ColoursStream.ReadLine()) != null)
+        {
+            Console.WriteLine( "RawColours: "  + RawColours );
+            String DeclareConstantWord = "DC.W";
+            if ( RawColours.Contains(DeclareConstantWord) )
+            {
+                RawColours = RawColours.Replace( DeclareConstantWord, "" );
+                RawColours = RawColours.Trim();
+                String[] SplitColorsHex = RawColours.Split(","); 
+                for (int i = 0; i < SplitColorsHex.Length; i++)
+                {
+                    SplitColorsHex[i] = SplitColorsHex[i].Replace("$0", "");
+                    int HexColor = int.Parse( SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber );
+                    //Console.WriteLine( "Color[" + i + "]: "  + HexColor + " 0x" + SplitColorsHex[i]);
+                    UInt16 RawColorValue = (UInt16)HexColor;
+                    Palette.Add( Alien.Amiga4BitColorToRGBColor( RawColorValue ) );
+                }
+            }
+            else
+            {
+                Console.WriteLine( "Skipped Line: " + RawColours );
+            }
+        }
+        ColoursStream.Close();
+    }
+
+    /** For the given palette index what is the color value */
+    public Color IndexToColor( int Index, int Alpha = 0xFF )
+    {
+        Color c = Palette[Index];
+        c = Color.FromArgb( Alpha, c );
+        return c; 
+    }
+
+};
+
 /** Menace backgrounds are stored in Meance.s with the label "backgrounds"
   Backgrounds are made up of blocks that are (2 bytes x 16 high x 2 planes) with a max of 1024 bytes for all the data, 
   so there are 1024 / 64 = 16 blocks stored in the data.
@@ -243,13 +315,16 @@ class MenanceAliensToPNG
    */
 class MenaceBackgroundsToPNG
 {
-        /** Where to read the Menace raw graphics from */
+    /** Where to read the Menace raw graphics from */
     String DataPath;
 
     String OutputPath;
 
     /** The numbers read from Menace.s "backgrounds" */
     List<byte> BackgroundsRawData;
+
+    /** The Palette we read from file */
+    SourceCodeToColorPalette Palette;
     
     const int NumBitPlanes = 2;
     const int BlockWidthBytes = BlockWidthPixels / 8;
@@ -284,6 +359,9 @@ class MenaceBackgroundsToPNG
     /** Initialise a data structure for the backgrounds to be read out of the text file */
     void ParseBackgrounds()
     {
+        Palette = new SourceCodeToColorPalette( DataPath, "level.colours.txt" );
+
+
         // Load and parse the backgrounds from a text file pasted from menace.s, turn it into a list of raw numbers
         using ( StreamReader BackgroundsStream = new StreamReader( DataPath + "Backgrounds.txt" ) )
         {
@@ -344,9 +422,7 @@ class MenaceBackgroundsToPNG
                         int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1); 
                         int x = (i * 8) + (7 - Bit);
                         //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
-                        Color MenaceColor = Color.FromArgb( 0xFF, b * 16, b * 16, b * 16 ); 
-                        //TODO(davepop2): Where is the colour palette stored? (in every alien colour palette? or in level.colours ??)
-                        // The above code is just converting the palette index into RGB (temp)
+                        Color MenaceColor = Palette.IndexToColor( b );
                         bmp.SetPixel( x, y, MenaceColor );
                     }
                 }
