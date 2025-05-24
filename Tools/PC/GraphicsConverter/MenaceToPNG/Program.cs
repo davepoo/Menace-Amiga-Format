@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Xml;
 
 // DavePoo2 - May 2025
 // Script to Convert Menace "Aliens" file back into an RGB PNG for each alien graphic stored in the file.
@@ -323,9 +324,12 @@ class MenaceBackgroundsToPNG
     /** The numbers read from Menace.s "backgrounds" */
     List<byte> BackgroundsRawData;
 
+    /** The numbers read from Menace.s "backgroundtable" */
+    List<byte> BackgroundTableRawData;
+
     /** The Palette we read from file */
     SourceCodeToColorPalette Palette;
-    
+
     const int NumBitPlanes = 2;
     const int BlockWidthBytes = BlockWidthPixels / 8;
     const int BlockWidthPixels = 16;
@@ -334,11 +338,11 @@ class MenaceBackgroundsToPNG
     const int BlockBytes = BlockBytesPerBitPlane * NumBitPlanes;
     const int NumBlocks = 12;   //see note in header, comments/code say 16, but there are only 12
 
-    public MenaceBackgroundsToPNG( string[] args )
+    public MenaceBackgroundsToPNG(string[] args)
     {
         Console.WriteLine("Menace 'Backgrounds' to PNG - DavePoo2 May 2025 - v1.00");
 
-        if ( args.Length == 0 )
+        if (args.Length == 0)
         {
             throw new Exception("Expected the first argument to be the path to the data to process");
         }
@@ -359,53 +363,106 @@ class MenaceBackgroundsToPNG
     /** Initialise a data structure for the backgrounds to be read out of the text file */
     void ParseBackgrounds()
     {
-        Palette = new SourceCodeToColorPalette( DataPath, "level.colours.txt" );
+        Palette = new SourceCodeToColorPalette(DataPath, "level.colours.txt");
 
-
-        // Load and parse the backgrounds from a text file pasted from menace.s, turn it into a list of raw numbers
-        using ( StreamReader BackgroundsStream = new StreamReader( DataPath + "Backgrounds.txt" ) )
+        // Load and parse the backgrounds (images) from a text file pasted from menace.s, turn it into a list of raw numbers
+        using (StreamReader BackgroundsStream = new StreamReader(DataPath + "Backgrounds.txt"))
         {
             const int ExpectedNumberOfBytesRead = 12 * 32 * sizeof(UInt16);
-            BackgroundsRawData = new List<byte>( ExpectedNumberOfBytesRead );
+            BackgroundsRawData = new List<byte>(ExpectedNumberOfBytesRead);
             String line;
             while ((line = BackgroundsStream.ReadLine()) != null)
             {
-                line = line.Replace("backgrounds","");
+                line = line.Replace("backgrounds", "");
                 line = line.Replace("DC.W", "");
                 line = line.Trim();
                 Console.WriteLine(line);
 
-                if ( line != "" )
+                if (line != "")
                 {
-                    String[] TextAsHex = line.Split(","); 
+                    String[] TextAsHex = line.Split(",");
                     for (int i = 0; i < TextAsHex.Length; i++)
                     {
                         TextAsHex[i] = TextAsHex[i].Trim();
-                        Debug.Assert( TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $" );
+                        Debug.Assert(TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $");
                         TextAsHex[i] = TextAsHex[i].Replace("$", "");
-                        int HexValue = int.Parse( TextAsHex[i], System.Globalization.NumberStyles.HexNumber );
-                        BackgroundsRawData.Add( (byte)((HexValue >>> 8) & 0xFF) );
-                        BackgroundsRawData.Add( (byte)(HexValue & 0xFF) );
-                        
+                        int HexValue = int.Parse(TextAsHex[i], System.Globalization.NumberStyles.HexNumber);
+                        BackgroundsRawData.Add((byte)((HexValue >>> 8) & 0xFF));
+                        BackgroundsRawData.Add((byte)(HexValue & 0xFF));
+
                         //Console.WriteLine(TextAsHex[i] + " = " + HexValue);
                     }
                 }
             }
 
-            Debug.Assert( BackgroundsRawData.Count() == ExpectedNumberOfBytesRead, "Expected "+ExpectedNumberOfBytesRead+" bytes to be read for the backgrounds" );
+            Debug.Assert(BackgroundsRawData.Count() == ExpectedNumberOfBytesRead, "Expected " + ExpectedNumberOfBytesRead + " bytes to be read for the backgrounds");
         }
-    }    
+
+        // Load and parse the backgroundtable (map data) from a text file pasted from menace.s, turn it into a list of raw numbers
+        using (StreamReader BackgroundTableStream = new StreamReader(DataPath + "BackgroundTable.txt"))
+        {
+            const int BlocksAcross = 24;
+            const int BlocksHigh = 12;
+            const int ExpectedNumberOfBytesRead = BlocksAcross * BlocksHigh;
+            BackgroundTableRawData = new List<byte>(ExpectedNumberOfBytesRead);
+            String line;
+            while ((line = BackgroundTableStream.ReadLine()) != null)
+            {
+                line = line.Replace("backgroundtable", "");
+                line = line.Replace("DC.W", "");
+                line = line.Trim();
+                Console.WriteLine(line);
+
+                if (line != "")
+                {
+                    String[] TextAsHex = line.Split(",");
+                    for (int i = 0; i < TextAsHex.Length; i++)
+                    {
+                        TextAsHex[i] = TextAsHex[i].Trim();
+                        Debug.Assert(TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $");
+                        TextAsHex[i] = TextAsHex[i].Replace("$", "");
+                        int HexValue = int.Parse(TextAsHex[i], System.Globalization.NumberStyles.HexNumber);
+
+                        // The data is 4-bit per tile index
+                        byte FirstByte = (byte)((HexValue >>> 8) & 0xFF);
+                        byte SecondByte = (byte)(HexValue & 0xFF);
+
+
+                        byte b0 = (byte)(FirstByte >>> 4);
+                        byte b1 = (byte)(FirstByte & 0xF);
+                        byte b2 = (byte)(SecondByte >>> 4);
+                        byte b3 = (byte)(SecondByte & 0xF);
+
+                        BackgroundTableRawData.Add(b0);
+                        BackgroundTableRawData.Add(b1);
+                        BackgroundTableRawData.Add(b2);
+                        BackgroundTableRawData.Add(b3);
+
+                        //Console.WriteLine(TextAsHex[i] + " = " + HexValue);
+                    }
+                }
+            }
+
+            Debug.Assert(BackgroundTableRawData.Count() == ExpectedNumberOfBytesRead, "Expected " + ExpectedNumberOfBytesRead + " bytes to be read for the backgrounds");
+        }
+    }
 
     public void Run()
     {
+        WriteBackgroundsPNG();
+        WriteBackgroundTileData();
+    }
+
+    void WriteBackgroundsPNG()
+    {
         // Turn #BackgroundsRawData into a PNG
-        Bitmap bmp = new(BlockWidthPixels,BlockHeightPixels * NumBlocks);
+        Bitmap bmp = new(BlockWidthPixels, BlockHeightPixels * NumBlocks);
 
         String FileName = "backgrounds.png";
-        Console.WriteLine("Writing: " + FileName );
+        Console.WriteLine("Writing: " + FileName);
 
         for (int BlockIndex = 0; BlockIndex < NumBlocks; BlockIndex++)
-        {            
+        {
             for (int Row = 0; Row < BlockHeightPixels; Row++)
             {
                 for (int i = 0; i < BlockWidthBytes; i++)
@@ -419,17 +476,68 @@ class MenaceBackgroundsToPNG
                     int y = Row + (BlockIndex * BlockHeightPixels);
                     for (int Bit = 0; Bit < 8; Bit++)
                     {
-                        int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1); 
+                        int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1);
                         int x = (i * 8) + (7 - Bit);
                         //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
-                        Color MenaceColor = Palette.IndexToColor( b );
-                        bmp.SetPixel( x, y, MenaceColor );
+                        Color MenaceColor = Palette.IndexToColor(b);
+                        bmp.SetPixel(x, y, MenaceColor);
                     }
                 }
             }
         }
 
-        Console.WriteLine( "Writing: " + FileName );
-        bmp.Save( OutputPath + FileName, ImageFormat.Png );
+        Console.WriteLine("Writing: " + FileName);
+        bmp.Save(OutputPath + FileName, ImageFormat.Png);
+    }
+
+    void WriteBackgroundTileData()
+    {
+        // Turn #BackgroundTableRawData into a tile data TMX file for use in "Tiled" editor https://www.mapeditor.org/docs
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // https://code.tutsplus.com/parsing-and-rendering-tiled-tmx-format-maps-in-your-own-game-engine--gamedev-3104t
+
+        String FileName = "backgrounds.xml";
+        Console.WriteLine("Writing: " + FileName);
+
+        using (XmlWriter Xml = XmlWriter.Create(Path.Combine(OutputPath, FileName)))
+        {
+            const int BlocksAcross = 24;
+            const int BlocksHigh = 12;
+            Xml.WriteStartElement("map");
+            Xml.WriteAttributeString("width", ""+BlocksAcross);
+            Xml.WriteAttributeString("height", ""+BlocksHigh);
+            Xml.WriteAttributeString("tilewidth", ""+BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", ""+BlockHeightPixels);
+            Xml.WriteStartElement("tileset");
+            Xml.WriteAttributeString("tilewidth", ""+BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", ""+BlockHeightPixels);
+            Xml.WriteStartElement("image");
+            Xml.WriteAttributeString("source", "Backgrounds.png");
+            Xml.WriteAttributeString("width", ""+BlockWidthPixels );
+            Xml.WriteAttributeString("height", ""+BlockHeightPixels * NumBlocks);
+            Xml.WriteEndElement();  //image
+            Xml.WriteEndElement();  //tileset
+            Xml.WriteStartElement("layer");
+            Xml.WriteAttributeString("name", "MenaceBackgroundsLevel1");
+            Xml.WriteAttributeString("width", ""+BlocksAcross);
+            Xml.WriteAttributeString("height", ""+BlocksHigh);
+            Xml.WriteStartElement("data");
+            for (int Row = 0; Row < BlocksHigh; Row++)
+            {
+                for (int Block = 0; Block < BlocksAcross; Block++)
+                {
+                    Xml.WriteStartElement("tile");
+                    const int FirstgidIndex = 1;
+                    int TMXgid = BackgroundTableRawData[(Row * BlocksHigh) + Block] + FirstgidIndex;
+                    Xml.WriteAttributeString("gid", "" + TMXgid);
+                    Xml.WriteEndElement();  //tile
+                }
+            }
+            Xml.WriteEndElement();  //data
+            Xml.WriteEndElement();  //layer
+            Xml.WriteEndElement();  //map
+            Xml.Flush();
+            Xml.Close();
+        }
     }
 };
