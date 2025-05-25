@@ -710,14 +710,14 @@ class MenaceForegroundsToPNG
                     byte b1 = ForegroundsRawData[ByteIndex + BlockBytesPerBitPlane];
                     byte b2 = ForegroundsRawData[ByteIndex + (BlockBytesPerBitPlane * 2)];
 
-                    // Write X,y into bitmap
-                    int y = Row + ((BlockIndex % ForegroundsBlocksPerRow) * BlockHeightPixels);
+                    // Write x,y into bitmap
+                    int y = Row + ((BlockIndex / ForegroundsBlocksPerRow) * BlockHeightPixels);
                     for (int Bit = 0; Bit < 8; Bit++)
                     {
                         int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1) | (((b2 >>> Bit) & 0b1) << 2);
                         int x = (i * 8) + (7 - Bit);
 
-                        int xOffset = (BlockIndex / ForegroundsBlocksPerCol) * BlockWidthPixels;
+                        int xOffset = (BlockIndex % ForegroundsBlocksPerCol) * BlockWidthPixels;
                         x += xOffset;
 
                         //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
