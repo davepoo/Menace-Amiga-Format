@@ -93,7 +93,8 @@ I've been slowly making some effect to reverse those files back out into files t
 * [GraphicsConverter/Data/PNG](Tools/PC/GraphicsConverter/Data/PNG/) contains the data that I have so far converted back out of the game
 
 I've exported the background image and map data into a format that can be read by [Tiled Map Editor](https://www.mapeditor.org/)
-![Assemble To Disk Screenshot](Images/TiledBackgroundLevel1.png)
+![Tiled Editor - Background Level 1](Images/TiledBackgroundLevel1.png)
+![Tiled Editor - Foreground Level 1](Images/TiledForegroundLevel1.png)
 
 
 
