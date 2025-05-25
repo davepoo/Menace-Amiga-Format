@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Text;
 using System.Xml;
 
 // DavePoo2 - May 2025
@@ -311,9 +312,14 @@ class SourceCodeToColorPalette
   Backgrounds are made up of blocks that are (2 bytes x 16 high x 2 planes) with a max of 1024 bytes for all the data, 
   so there are 1024 / 64 = 16 blocks stored in the data.
   
-  Note the code in Menace.s implies there is 16 blocks (1024 byte) but the data only seems
-  to contain 12 blocks (768 bytes), so if 2nd level was added it could corrupt or crash??
-   */
+  Note the code in Menace.s stores the background map as 4-bits per tiles, so there is max of 16 blocks in the 
+  background map (level 1 stored in menace.s only uses 12 of the possible 16 blocks)
+
+  The background map data is a 24 x 12 map
+
+  Convert the bitplane graphics and palette into PNG and convert the that and the background map (background table)
+  into TMX format that can be read by the "Tiled" map editor on PC/Mac/Linux
+*/
 class MenaceBackgroundsToPNG
 {
     /** Where to read the Menace raw graphics from */
@@ -336,7 +342,7 @@ class MenaceBackgroundsToPNG
     const int BlockHeightPixels = 16;
     const int BlockBytesPerBitPlane = BlockWidthBytes * BlockHeightPixels;
     const int BlockBytes = BlockBytesPerBitPlane * NumBitPlanes;
-    const int NumBlocks = 12;   //see note in header, comments/code say 16, but there are only 12
+    const int NumBlocks = 12;   //see note in header, comments/code say 16 (which is the max supported in 4bits), but there are only 12 in this set
 
     public MenaceBackgroundsToPNG(string[] args)
     {
@@ -490,44 +496,81 @@ class MenaceBackgroundsToPNG
         bmp.Save(OutputPath + FileName, ImageFormat.Png);
     }
 
+    static void WriteTiledVersionToXml( XmlWriter Xml )
+    {
+        Xml.WriteAttributeString("version", "1.10");
+        Xml.WriteAttributeString("tiledversion", "1.11.2");
+    }
+
+    static void WriteDocTypeXml( XmlWriter Xml )
+    {
+        Xml.WriteDocType("TMX", null, "http://mapeditor.org/dtd/1.0/map.dtd", null);
+    }
+
     void WriteBackgroundTileData()
     {
         // Turn #BackgroundTableRawData into a tile data TMX file for use in "Tiled" editor https://www.mapeditor.org/docs
         // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
         // https://code.tutsplus.com/parsing-and-rendering-tiled-tmx-format-maps-in-your-own-game-engine--gamedev-3104t
 
-        String FileName = "backgrounds.xml";
-        Console.WriteLine("Writing: " + FileName);
+        String TileSetFileName = "backgrounds_tileset.xml";
+        Console.WriteLine("Writing: " + TileSetFileName);
 
-        using (XmlWriter Xml = XmlWriter.Create(Path.Combine(OutputPath, FileName)))
+        using (XmlTextWriter Xml = new XmlTextWriter(Path.Combine(OutputPath, TileSetFileName), Encoding.UTF8))
+        {
+            Xml.Formatting = Formatting.Indented;
+            WriteDocTypeXml(Xml);
+            Xml.WriteStartElement("tileset");
+            Xml.WriteAttributeString("name", "MenaceBackgroundTilesLevel1");
+            WriteTiledVersionToXml(Xml);
+            Xml.WriteAttributeString("tilewidth", "" + BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", "" + BlockHeightPixels);
+            Xml.WriteAttributeString("tilecount", "" + NumBlocks);
+            Xml.WriteAttributeString("columns", "1");
+            Xml.WriteStartElement("image");
+            Xml.WriteAttributeString("source", "Backgrounds.png");
+            Xml.WriteAttributeString("width", "" + BlockWidthPixels);
+            Xml.WriteAttributeString("height", "" + BlockHeightPixels * NumBlocks);
+            Xml.WriteEndElement();  //image
+            Xml.WriteEndElement();  //tileset            
+            Xml.Flush();
+            Xml.Close();
+        }
+        
+        String MapFileName = "backgrounds_level1.tmx";
+        Console.WriteLine("Writing: " + MapFileName);
+
+        using (XmlTextWriter Xml = new XmlTextWriter(Path.Combine(OutputPath, MapFileName), Encoding.UTF8))
         {
             const int BlocksAcross = 24;
             const int BlocksHigh = 12;
+            const int FirstgidIndex = 1;
+            Xml.Formatting = Formatting.Indented;
+            WriteDocTypeXml(Xml); 
             Xml.WriteStartElement("map");
-            Xml.WriteAttributeString("width", ""+BlocksAcross);
-            Xml.WriteAttributeString("height", ""+BlocksHigh);
-            Xml.WriteAttributeString("tilewidth", ""+BlockWidthPixels);
-            Xml.WriteAttributeString("tileheight", ""+BlockHeightPixels);
+            WriteTiledVersionToXml(Xml);
+            Xml.WriteAttributeString("orientation", "orthogonal");
+            Xml.WriteAttributeString("width", "" + BlocksAcross);
+            Xml.WriteAttributeString("height", "" + BlocksHigh);
+            Xml.WriteAttributeString("tilewidth", "" + BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", "" + BlockHeightPixels);
+
             Xml.WriteStartElement("tileset");
-            Xml.WriteAttributeString("tilewidth", ""+BlockWidthPixels);
-            Xml.WriteAttributeString("tileheight", ""+BlockHeightPixels);
-            Xml.WriteStartElement("image");
-            Xml.WriteAttributeString("source", "Backgrounds.png");
-            Xml.WriteAttributeString("width", ""+BlockWidthPixels );
-            Xml.WriteAttributeString("height", ""+BlockHeightPixels * NumBlocks);
-            Xml.WriteEndElement();  //image
-            Xml.WriteEndElement();  //tileset
+            Xml.WriteAttributeString("firstgid", ""+FirstgidIndex);
+            Xml.WriteAttributeString("source", TileSetFileName);
+            Xml.WriteEndElement();  //tileset            
+
+
             Xml.WriteStartElement("layer");
-            Xml.WriteAttributeString("name", "MenaceBackgroundsLevel1");
-            Xml.WriteAttributeString("width", ""+BlocksAcross);
-            Xml.WriteAttributeString("height", ""+BlocksHigh);
+            Xml.WriteAttributeString("name", "MenaceBackgroundLevel1");
+            Xml.WriteAttributeString("width", "" + BlocksAcross);
+            Xml.WriteAttributeString("height", "" + BlocksHigh);
             Xml.WriteStartElement("data");
             for (int Row = 0; Row < BlocksHigh; Row++)
             {
                 for (int Block = 0; Block < BlocksAcross; Block++)
                 {
                     Xml.WriteStartElement("tile");
-                    const int FirstgidIndex = 1;
                     int TMXgid = BackgroundTableRawData[(Row * BlocksHigh) + Block] + FirstgidIndex;
                     Xml.WriteAttributeString("gid", "" + TMXgid);
                     Xml.WriteEndElement();  //tile
@@ -535,7 +578,9 @@ class MenaceBackgroundsToPNG
             }
             Xml.WriteEndElement();  //data
             Xml.WriteEndElement();  //layer
+
             Xml.WriteEndElement();  //map
+
             Xml.Flush();
             Xml.Close();
         }
