@@ -92,7 +92,7 @@ I've been slowly making some effect to reverse those files back out into files t
 * [MenanceToPNG](Tools/PC/GraphicsConverter/MenaceToPNG/Program.cs) is a PC C# script that is converting much of the data.
 * [GraphicsConverter/Data/PNG](Tools/PC/GraphicsConverter/Data/PNG/) contains the data that I have so far converted back out of the game
 
-I've exported the background image and map data into a format that can be read by [Tiled Map Editor](https://www.mapeditor.org/)
+I've exported the background and foreground image and map data into a format that can be read by [Tiled Map Editor](https://www.mapeditor.org/)
 ![Tiled Editor - Background Level 1](Images/TiledBackgroundLevel1.png)
 ![Tiled Editor - Foreground Level 1](Images/TiledForegroundLevel1.png)
 
