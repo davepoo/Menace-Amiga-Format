@@ -803,12 +803,17 @@ class MenaceForegroundsToPNG
             Xml.WriteAttributeString("width", "" + MapBlocksAcross);
             Xml.WriteAttributeString("height", "" + MapBlocksHigh);
             Xml.WriteStartElement("data");
-            for (int Row = 0; Row < MapBlocksHigh; Row++)
+
+            for (int TiledRow = 0; TiledRow < MapBlocksHigh; TiledRow++)
             {
-                for (int Block = 0; Block < MapBlocksAcross; Block++)
+                for (int TiledCol = 0; TiledCol < MapBlocksAcross; TiledCol++)
                 {
                     Xml.WriteStartElement("tile");
-                    int TMXgid = ForegroundsRawData[(Row * MapBlocksHigh) + Block] + FirstgidIndex;
+                    // The map data is stored sequentally as 12 vertical blocks
+                    // But Tiled expects the first full row, followed by the next
+                    // So covert the data....
+                    int MenaceIndex = (TiledCol * MapBlocksHigh) + TiledRow;
+                    int TMXgid = MapRawData[MenaceIndex] + FirstgidIndex;
                     Xml.WriteAttributeString("gid", "" + TMXgid);
                     Xml.WriteEndElement();  //tile
                 }
