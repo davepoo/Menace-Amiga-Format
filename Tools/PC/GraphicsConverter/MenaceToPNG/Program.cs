@@ -9,13 +9,16 @@ using System.Xml;
 
 class MenanceTools
 {
-    static void Main(string[] args) 
-    { 
-        MenanceAliensToPNG MenaceToPNG = new MenanceAliensToPNG( args );
+    static void Main(string[] args)
+    {
+        MenanceAliensToPNG MenaceToPNG = new MenanceAliensToPNG(args);
         MenaceToPNG.Run();
 
-        MenaceBackgroundsToPNG MenaceBackgroundsToPNG = new MenaceBackgroundsToPNG( args );
+        MenaceBackgroundsToPNG MenaceBackgroundsToPNG = new MenaceBackgroundsToPNG(args);
         MenaceBackgroundsToPNG.Run();
+
+        MenaceForegroundsToPNG MenaceForegroundsToPNG = new MenaceForegroundsToPNG(args);
+        MenaceForegroundsToPNG.Run();
     }
 }
 
@@ -572,6 +575,240 @@ class MenaceBackgroundsToPNG
                 {
                     Xml.WriteStartElement("tile");
                     int TMXgid = BackgroundTableRawData[(Row * BlocksHigh) + Block] + FirstgidIndex;
+                    Xml.WriteAttributeString("gid", "" + TMXgid);
+                    Xml.WriteEndElement();  //tile
+                }
+            }
+            Xml.WriteEndElement();  //data
+            Xml.WriteEndElement();  //layer
+
+            Xml.WriteEndElement();  //map
+
+            Xml.Flush();
+            Xml.Close();
+        }
+    }
+};
+
+/** Menace backgrounds are stored in 
+  Meance.s - palette with the label "level.colours"
+  foregrounds - graphics tiles, 16 x 16 x 3 bitplanes (no mask). 255 tiles are stored.
+  map - 8-bit map data, 12 blocks high, 440 blocks across. Appears to be an FFFF end of file sential in the file
+    The map data appears to be stored as 12 blocks going down in a vertical strip (as this corresponds to how it is drawn by the Amiga)
+  
+  Convert the bitplane graphics and palette into PNG
+  Convert that and the map data into TMX format that can be read by the "Tiled" map editor on PC/Mac/Linux
+*/
+class MenaceForegroundsToPNG
+{
+    /** Where to read the Menace raw graphics from */
+    String DataPath;
+
+    String OutputPath;
+
+    /** The numbers read from "foregrounds", this is the graphics bitplane data */
+    byte[] ForegroundsRawData;
+
+    /** The numbers read from Menace.s "map", each byte is a map tile index */
+    byte[] MapRawData;
+
+    /** The Palette we read from file */
+    SourceCodeToColorPalette Palette;
+
+    const int NumBitPlanes = 3;
+    const int BlockWidthBytes = BlockWidthPixels / 8;
+    const int BlockWidthPixels = 16;
+    const int BlockHeightPixels = 16;
+    const int BlockBytesPerBitPlane = BlockWidthBytes * BlockHeightPixels;
+    const int BlockBytes = BlockBytesPerBitPlane * NumBitPlanes;
+    const int NumBlocks = 255;   //see note in header
+    const int ForegroundsBlocksPerRow = 16;
+    const int ForegroundsBlocksPerCol = 16;
+    const int MapBlocksAcross = 440;
+    const int MapBlocksHigh = 12;
+
+
+    public MenaceForegroundsToPNG(string[] args)
+    {
+        Console.WriteLine("Menace 'Foregrounds' to PNG - DavePoo2 May 2025 - v1.00");
+
+        if (args.Length == 0)
+        {
+            throw new Exception("Expected the first argument to be the path to the data to process");
+        }
+        else
+        {
+            const int DataPathIndex = 0;
+            DataPath = args[DataPathIndex] + "\\";
+        }
+
+        OutputPath = DataPath + "\\PNG\\";
+
+        Console.WriteLine("DataPath: " + DataPath);
+        Console.WriteLine("OutputPath: " + OutputPath);
+
+        ParseForegrounds();
+    }
+
+    /** Initialise a data structure for the foregrounds to be read out of the text file */
+    void ParseForegrounds()
+    {
+        Palette = new SourceCodeToColorPalette(DataPath, "level.colours.txt");
+
+        // Load and parse the foreground (images)
+        using (FileStream ForegroundsStream = new FileStream(DataPath + "foregrounds", FileMode.Open))
+        {
+            const int ExpectedNumberOfBytesRead = NumBlocks * BlockWidthBytes * BlockHeightPixels * NumBitPlanes;
+
+            ForegroundsRawData = new byte[ExpectedNumberOfBytesRead];
+            int Offset = 0;
+            int NumBytesRead = 0;
+            while ((NumBytesRead = ForegroundsStream.Read(ForegroundsRawData, Offset, ExpectedNumberOfBytesRead - Offset)) > 0)
+            {
+                Offset += NumBytesRead;
+            }
+        }
+
+        // Load the "map" (map data) from a binary file
+        using (FileStream ForegroundsMapStream = new FileStream(DataPath + "map", FileMode.Open))
+        {
+            const int ExpectedNumberOfBytesRead = MapBlocksAcross * MapBlocksHigh;
+            MapRawData = new byte[ExpectedNumberOfBytesRead];
+
+            int Offset = 0;
+            int NumBytesRead = 0;
+            while ((NumBytesRead = ForegroundsMapStream.Read(MapRawData, Offset, ExpectedNumberOfBytesRead - Offset)) > 0)
+            {
+                Offset += NumBytesRead;
+            }
+        }
+    }
+
+    public void Run()
+    {
+        WriteForegroundsPNG();
+        WriteForegroundTileData();
+    }
+
+    void WriteForegroundsPNG()
+    {
+        // Turn #ForegroundsRawData into a PNG
+        Bitmap bmp = new(BlockWidthPixels * ForegroundsBlocksPerRow, BlockHeightPixels * ForegroundsBlocksPerCol);
+
+        String FileName = "foregrounds.png";
+        Console.WriteLine("Writing: " + FileName);
+
+        for (int BlockIndex = 0; BlockIndex < NumBlocks; BlockIndex++)
+        {
+            for (int Row = 0; Row < BlockHeightPixels; Row++)
+            {
+                for (int i = 0; i < BlockWidthBytes; i++)
+                {
+                    int BlockByteStart = BlockIndex * (BlockBytesPerBitPlane * NumBitPlanes);
+                    int ByteIndex = BlockByteStart + (Row * BlockWidthBytes) + i;
+                    byte b0 = ForegroundsRawData[ByteIndex];
+                    byte b1 = ForegroundsRawData[ByteIndex + BlockBytesPerBitPlane];
+                    byte b2 = ForegroundsRawData[ByteIndex + (BlockBytesPerBitPlane * 2)];
+
+                    // Write X,y into bitmap
+                    int y = Row + ((BlockIndex % ForegroundsBlocksPerRow) * BlockHeightPixels);
+                    for (int Bit = 0; Bit < 8; Bit++)
+                    {
+                        int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1) | (((b2 >>> Bit) & 0b1) << 2);
+                        int x = (i * 8) + (7 - Bit);
+
+                        int xOffset = (BlockIndex / ForegroundsBlocksPerCol) * BlockWidthPixels;
+                        x += xOffset;
+
+                        //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
+                        const int PaletteIndexOffset = 8;       // Foregrounds use the higher 8 of the 16 colours in the palette, so add 8 to all the indexes
+                        Color MenaceColor = Palette.IndexToColor(b + PaletteIndexOffset);
+                        bmp.SetPixel(x, y, MenaceColor);
+                    }
+                }
+            }
+        }
+
+        Console.WriteLine("Writing: " + FileName);
+        bmp.Save(OutputPath + FileName, ImageFormat.Png);
+    }
+
+    static void WriteTiledVersionToXml( XmlWriter Xml )
+    {
+        Xml.WriteAttributeString("version", "1.10");
+        Xml.WriteAttributeString("tiledversion", "1.11.2");
+    }
+
+    static void WriteDocTypeXml( XmlWriter Xml )
+    {
+        Xml.WriteDocType("TMX", null, "http://mapeditor.org/dtd/1.0/map.dtd", null);
+    }
+
+    void WriteForegroundTileData()
+    {
+        // Turn #BackgroundTableRawData into a tile data TMX file for use in "Tiled" editor https://www.mapeditor.org/docs
+        // https://doc.mapeditor.org/en/stable/reference/tmx-map-format/
+        // https://code.tutsplus.com/parsing-and-rendering-tiled-tmx-format-maps-in-your-own-game-engine--gamedev-3104t
+
+        String TileSetFileName = "foregrounds_tileset.xml";
+        Console.WriteLine("Writing: " + TileSetFileName);
+
+        using (XmlTextWriter Xml = new XmlTextWriter(Path.Combine(OutputPath, TileSetFileName), Encoding.UTF8))
+        {
+            Xml.Formatting = Formatting.Indented;
+            WriteDocTypeXml(Xml);
+            Xml.WriteStartElement("tileset");
+            Xml.WriteAttributeString("name", "MenaceForegroundTilesLevel1");
+            WriteTiledVersionToXml(Xml);
+            Xml.WriteAttributeString("tilewidth", "" + BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", "" + BlockHeightPixels);
+            Xml.WriteAttributeString("tilecount", "" + NumBlocks);
+            Xml.WriteAttributeString("columns", "1");
+            Xml.WriteStartElement("image");
+            Xml.WriteAttributeString("source", "foregrounds.png");
+            int TileSetWidth = BlockWidthPixels * ForegroundsBlocksPerRow;
+            int TilesetHeight = BlockHeightPixels * ForegroundsBlocksPerCol;
+            Xml.WriteAttributeString("width", "" + TileSetWidth);
+            Xml.WriteAttributeString("height", "" + TilesetHeight);
+            Xml.WriteEndElement();  //image
+            Xml.WriteEndElement();  //tileset            
+            Xml.Flush();
+            Xml.Close();
+        }
+        
+        String MapFileName = "foregrounds_level1.tmx";
+        Console.WriteLine("Writing: " + MapFileName);
+
+        using (XmlTextWriter Xml = new XmlTextWriter(Path.Combine(OutputPath, MapFileName), Encoding.UTF8))
+        {
+            const int FirstgidIndex = 1;
+            Xml.Formatting = Formatting.Indented;
+            WriteDocTypeXml(Xml); 
+            Xml.WriteStartElement("map");
+            WriteTiledVersionToXml(Xml);
+            Xml.WriteAttributeString("orientation", "orthogonal");
+            Xml.WriteAttributeString("width", "" + MapBlocksAcross);
+            Xml.WriteAttributeString("height", "" + MapBlocksHigh);
+            Xml.WriteAttributeString("tilewidth", "" + BlockWidthPixels);
+            Xml.WriteAttributeString("tileheight", "" + BlockHeightPixels);
+
+            Xml.WriteStartElement("tileset");
+            Xml.WriteAttributeString("firstgid", ""+FirstgidIndex);
+            Xml.WriteAttributeString("source", TileSetFileName);
+            Xml.WriteEndElement();  //tileset            
+
+
+            Xml.WriteStartElement("layer");
+            Xml.WriteAttributeString("name", "MenaceForegroundLevel1");
+            Xml.WriteAttributeString("width", "" + MapBlocksAcross);
+            Xml.WriteAttributeString("height", "" + MapBlocksHigh);
+            Xml.WriteStartElement("data");
+            for (int Row = 0; Row < MapBlocksHigh; Row++)
+            {
+                for (int Block = 0; Block < MapBlocksAcross; Block++)
+                {
+                    Xml.WriteStartElement("tile");
+                    int TMXgid = ForegroundsRawData[(Row * MapBlocksHigh) + Block] + FirstgidIndex;
                     Xml.WriteAttributeString("gid", "" + TMXgid);
                     Xml.WriteEndElement();  //tile
                 }
