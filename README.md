@@ -90,7 +90,7 @@ Menace in Amiga Format never shipped with any tools required to make the graphic
 I've been slowly making some effect to reverse those files back out into files that can be edited (on PC). I'm putting them into more PC friendly formats to take advantage of any tools that already exist on the PC for editing, rather than writing a bunch from scratch for the Amiga.
 
 * [MenanceToPNG](Tools/PC/GraphicsConverter/MenaceToPNG/Program.cs) is a PC C# script that is converting much of the data.
-* [GraphicsConverter/Data/PNG](Tools/PC/GraphicsConverter/Data/) contains the data that I have so far converted back out of the game
+* [GraphicsConverter/Data/PNG](Tools/PC/GraphicsConverter/Data/PNG/) contains the data that I have so far converted back out of the game
 
 I've exported the background image and map data into a format that can be read by [Tiled Map Editor](https://www.mapeditor.org/)
 ![Assemble To Disk Screenshot](Images/TiledBackgroundLevel1.png)
