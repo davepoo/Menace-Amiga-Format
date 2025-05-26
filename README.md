@@ -96,6 +96,8 @@ I've exported the background and foreground image and map data into a format tha
 ![Tiled Editor - Background Level 1](Images/TiledBackgroundLevel1.png)
 ![Tiled Editor - Foreground Level 1](Images/TiledForegroundLevel1.png)
 
+The foreground map data can be exported from "Tiled" using the ![menace_foregrounds_exporter.js](Tools/PC/Tiled/menace_foregrounds_exporter.js) export script. This script needs to be added to the "Tiled" extensions folder to be seen as an option on the "Export As" screen. I've called the file extension .vmap, but Menace had no file extensions for any of it's file formats.
+
 
 
 
