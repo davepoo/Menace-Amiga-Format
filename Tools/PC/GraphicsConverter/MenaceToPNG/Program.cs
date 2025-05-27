@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
 
@@ -246,7 +247,7 @@ class MenanceAliensToPNG
 };
 
 
-/** Convert a number of colours from assembly source code into a palette of colours */ 
+/** Convert a number of colours from assembly source code into a palette of colours */
 class SourceCodeToColorPalette
 {
     /** Where to read the Menace raw palette from */
@@ -258,7 +259,7 @@ class SourceCodeToColorPalette
     /** The palette we converted from the file */
     List<Color> Palette;
 
-   public SourceCodeToColorPalette( String InDataPath, String InFileName )
+    public SourceCodeToColorPalette(String InDataPath, String InFileName)
     {
         Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.00");
         DataPath = InDataPath + "\\";
@@ -271,44 +272,61 @@ class SourceCodeToColorPalette
     void ParsePalette()
     {
         // Load and parse the colours from a text file pasted from menace.s
-        Console.WriteLine( "Reading Palette For:"  + FileName );
-        using StreamReader ColoursStream = new StreamReader( DataPath + FileName ); 
+        Console.WriteLine("Reading Palette For:" + FileName);
+        using StreamReader ColoursStream = new StreamReader(DataPath + FileName);
 
         String RawColours;
         while ((RawColours = ColoursStream.ReadLine()) != null)
         {
-            Console.WriteLine( "RawColours: "  + RawColours );
+            Console.WriteLine("RawColours: " + RawColours);
             String DeclareConstantWord = "DC.W";
-            if ( RawColours.Contains(DeclareConstantWord) )
+            if (RawColours.Contains(DeclareConstantWord))
             {
-                RawColours = RawColours.Replace( DeclareConstantWord, "" );
+                RawColours = RawColours.Replace(DeclareConstantWord, "");
                 RawColours = RawColours.Trim();
-                String[] SplitColorsHex = RawColours.Split(","); 
+                String[] SplitColorsHex = RawColours.Split(",");
                 for (int i = 0; i < SplitColorsHex.Length; i++)
                 {
                     SplitColorsHex[i] = SplitColorsHex[i].Replace("$0", "");
-                    int HexColor = int.Parse( SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber );
+                    int HexColor = int.Parse(SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber);
                     //Console.WriteLine( "Color[" + i + "]: "  + HexColor + " 0x" + SplitColorsHex[i]);
                     UInt16 RawColorValue = (UInt16)HexColor;
-                    Palette.Add( Alien.Amiga4BitColorToRGBColor( RawColorValue ) );
+                    Palette.Add(Alien.Amiga4BitColorToRGBColor(RawColorValue));
                 }
             }
             else
             {
-                Console.WriteLine( "Skipped Line: " + RawColours );
+                Console.WriteLine("Skipped Line: " + RawColours);
             }
         }
         ColoursStream.Close();
     }
 
     /** For the given palette index what is the color value */
-    public Color IndexToColor( int Index, int Alpha = 0xFF )
+    public Color IndexToColor(int Index, int Alpha = 0xFF)
     {
         Color c = Palette[Index];
-        c = Color.FromArgb( Alpha, c );
-        return c; 
+        c = Color.FromArgb(Alpha, c);
+        return c;
     }
 
+    /** write this palette into the bmp's palette */
+    public void WritePaletteToImage(Bitmap bmp)
+    {
+        ColorPalette PaletteClone = bmp.Palette;    // This returns a clone, so you can't modify it directly
+        for (int Index = 0; Index < PaletteClone.Entries.Length; Index++)
+        {
+            if (Index >= Palette.Count())
+            {
+                PaletteClone.Entries[Index] = Color.Magenta;
+            }
+            else
+            {
+                PaletteClone.Entries[Index] = Palette[Index];
+            }
+        }
+        bmp.Palette = PaletteClone;
+    }
 };
 
 /** Menace backgrounds are stored in Meance.s with the label "backgrounds"
@@ -693,10 +711,16 @@ class MenaceForegroundsToPNG
     void WriteForegroundsPNG()
     {
         // Turn #ForegroundsRawData into a PNG
-        Bitmap bmp = new(BlockWidthPixels * ForegroundsBlocksPerRow, BlockHeightPixels * ForegroundsBlocksPerCol);
-
         String FileName = "foregrounds.png";
         Console.WriteLine("Writing: " + FileName);
+
+        Bitmap bmp = new(
+            BlockWidthPixels * ForegroundsBlocksPerRow,
+            BlockHeightPixels * ForegroundsBlocksPerCol,
+            PixelFormat.Format8bppIndexed);
+        Palette.WritePaletteToImage( bmp );
+        BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                ImageLockMode.ReadWrite, bmp.PixelFormat);
 
         for (int BlockIndex = 0; BlockIndex < NumBlocks; BlockIndex++)
         {
@@ -722,12 +746,15 @@ class MenaceForegroundsToPNG
 
                         //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
                         const int PaletteIndexOffset = 8;       // Foregrounds use the higher 8 of the 16 colours in the palette, so add 8 to all the indexes
-                        Color MenaceColor = Palette.IndexToColor(b + PaletteIndexOffset);
-                        bmp.SetPixel(x, y, MenaceColor);
+                        byte Index = (byte)(b + PaletteIndexOffset);
+                        IntPtr Pixel = BmpData.Scan0 + (x) + (y * bmp.Width);
+                        Marshal.WriteByte(Pixel, Index);
                     }
                 }
             }
         }
+
+        bmp.UnlockBits(BmpData);
 
         Console.WriteLine("Writing: " + FileName);
         bmp.Save(OutputPath + FileName, ImageFormat.Png);
