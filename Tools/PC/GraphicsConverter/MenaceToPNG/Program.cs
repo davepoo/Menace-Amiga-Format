@@ -583,16 +583,19 @@ class MenaceBackgroundsToPNG
             Xml.WriteAttributeString("width", "" + BlocksAcross);
             Xml.WriteAttributeString("height", "" + BlocksHigh);
             Xml.WriteStartElement("data");
+            Xml.WriteAttributeString("encoding", "csv");
+            String CSVData = Environment.NewLine;
             for (int Row = 0; Row < BlocksHigh; Row++)
             {
                 for (int Block = 0; Block < BlocksAcross; Block++)
                 {
-                    Xml.WriteStartElement("tile");
                     int TMXgid = BackgroundTableRawData[(Row * BlocksHigh) + Block] + FirstgidIndex;
-                    Xml.WriteAttributeString("gid", "" + TMXgid);
-                    Xml.WriteEndElement();  //tile
+                    CSVData += TMXgid + ",";
                 }
+                CSVData += Environment.NewLine;
             }
+            CSVData = CSVData.Remove(CSVData.LastIndexOf(',')); //Tiled doesn't like a trailing comma
+            Xml.WriteString(CSVData);
             Xml.WriteEndElement();  //data
             Xml.WriteEndElement();  //layer
 
@@ -815,21 +818,23 @@ class MenaceForegroundsToPNG
             Xml.WriteAttributeString("width", "" + MapBlocksAcross);
             Xml.WriteAttributeString("height", "" + MapBlocksHigh);
             Xml.WriteStartElement("data");
-
+            Xml.WriteAttributeString("encoding", "csv");
+            String CSVData = Environment.NewLine;
             for (int TiledRow = 0; TiledRow < MapBlocksHigh; TiledRow++)
             {
                 for (int TiledCol = 0; TiledCol < MapBlocksAcross; TiledCol++)
                 {
-                    Xml.WriteStartElement("tile");
                     // The map data is stored sequentally as 12 vertical blocks
                     // But Tiled expects the first full row, followed by the next
                     // So covert the data....
                     int MenaceIndex = (TiledCol * MapBlocksHigh) + TiledRow;
                     int TMXgid = MapRawData[MenaceIndex] + FirstgidIndex;
-                    Xml.WriteAttributeString("gid", "" + TMXgid);
-                    Xml.WriteEndElement();  //tile
+                    CSVData += TMXgid + ",";
                 }
+                CSVData += Environment.NewLine;
             }
+            CSVData = CSVData.Remove(CSVData.LastIndexOf(',')); //Tiled doesn't like a trailing comma
+             Xml.WriteString(CSVData);
             Xml.WriteEndElement();  //data
             Xml.WriteEndElement();  //layer
 
