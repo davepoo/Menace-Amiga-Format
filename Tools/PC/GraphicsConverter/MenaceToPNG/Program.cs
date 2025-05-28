@@ -513,13 +513,13 @@ class MenaceBackgroundsToPNG
         bmp.Save(OutputPath + FileName, ImageFormat.Png);
     }
 
-    static void WriteTiledVersionToXml( XmlWriter Xml )
+    public static void WriteTiledVersionToXml( XmlWriter Xml )
     {
         Xml.WriteAttributeString("version", "1.10");
         Xml.WriteAttributeString("tiledversion", "1.11.2");
     }
 
-    static void WriteDocTypeXml( XmlWriter Xml )
+    public static void WriteDocTypeXml( XmlWriter Xml )
     {
         Xml.WriteDocType("TMX", null, "http://mapeditor.org/dtd/1.0/map.dtd", null);
     }
@@ -756,17 +756,6 @@ class MenaceForegroundsToPNG
         bmp.Save(OutputPath + FileName, ImageFormat.Png);
     }
 
-    static void WriteTiledVersionToXml( XmlWriter Xml )
-    {
-        Xml.WriteAttributeString("version", "1.10");
-        Xml.WriteAttributeString("tiledversion", "1.11.2");
-    }
-
-    static void WriteDocTypeXml( XmlWriter Xml )
-    {
-        Xml.WriteDocType("TMX", null, "http://mapeditor.org/dtd/1.0/map.dtd", null);
-    }
-
     void WriteForegroundTileData()
     {
         // Turn #BackgroundTableRawData into a tile data TMX file for use in "Tiled" editor https://www.mapeditor.org/docs
@@ -779,10 +768,10 @@ class MenaceForegroundsToPNG
         using (XmlTextWriter Xml = new XmlTextWriter(Path.Combine(OutputPath, TileSetFileName), Encoding.UTF8))
         {
             Xml.Formatting = Formatting.Indented;
-            WriteDocTypeXml(Xml);
+            MenaceBackgroundsToPNG.WriteDocTypeXml(Xml);
             Xml.WriteStartElement("tileset");
             Xml.WriteAttributeString("name", "MenaceForegroundTilesLevel1");
-            WriteTiledVersionToXml(Xml);
+            MenaceBackgroundsToPNG.WriteTiledVersionToXml(Xml);
             Xml.WriteAttributeString("tilewidth", "" + BlockWidthPixels);
             Xml.WriteAttributeString("tileheight", "" + BlockHeightPixels);
             Xml.WriteAttributeString("tilecount", "" + NumBlocks);
@@ -806,9 +795,9 @@ class MenaceForegroundsToPNG
         {
             const int FirstgidIndex = 1;
             Xml.Formatting = Formatting.Indented;
-            WriteDocTypeXml(Xml); 
+            MenaceBackgroundsToPNG.WriteDocTypeXml(Xml); 
             Xml.WriteStartElement("map");
-            WriteTiledVersionToXml(Xml);
+            MenaceBackgroundsToPNG.WriteTiledVersionToXml(Xml);
             Xml.WriteAttributeString("orientation", "orthogonal");
             Xml.WriteAttributeString("width", "" + MapBlocksAcross);
             Xml.WriteAttributeString("height", "" + MapBlocksHigh);
