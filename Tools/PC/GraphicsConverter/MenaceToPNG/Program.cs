@@ -50,11 +50,13 @@ struct Alien
     /** 8 Colors in ARGB format */    
     Color[] AlienColorsRGB = new Color[NumColors];
 
+    public SourceCodeToColorPalette AlienColorsPalette;
+
     public void ConvertMenaceColorsToRGB()
     {
         for (int i = 0; i < NumColors; i++)
         {
-            AlienColorsRGB[i] = IndexToMenaceColor( i );
+            AlienColorsRGB[i] = IndexToMenaceColor(i);
         }
     }
 
@@ -144,7 +146,12 @@ class MenanceAliensToPNG
             {
                 String FileName = Aliens[AlienIndex].OutputFileName;
                 int TotalNumRows = Aliens[AlienIndex].NumSprites * SpriteHeight; 
-                Bitmap bmp = new(SpriteRowSizeBits,TotalNumRows);
+                Bitmap bmp = new(SpriteRowSizeBits,TotalNumRows,PixelFormat.Format8bppIndexed);
+                Aliens[AlienIndex].AlienColorsPalette.WritePaletteToImage(bmp);
+                BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                    ImageLockMode.ReadWrite, bmp.PixelFormat);
+
+
                 Console.WriteLine("Reading: " + FileName + " NumSprites=" + Aliens[AlienIndex].NumSprites );
 
                 for (int AlienSpriteIndex = 0; AlienSpriteIndex < Aliens[AlienIndex].NumSprites; AlienSpriteIndex++)
@@ -167,18 +174,24 @@ class MenanceAliensToPNG
                             int y = Row + (AlienSpriteIndex * SpriteHeight);
                             for (int Bit = 0; Bit < 8; Bit++)
                             {
-                                int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1) | (((b2 >>> Bit) & 0b1) << 2); 
+                                int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1) | (((b2 >>> Bit) & 0b1) << 2);
                                 int x = (i * 8) + (7 - Bit);
                                 //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
-                                Color MenaceColor = Aliens[AlienIndex].ColorForIndex( b ); 
-                                int Alpha = (((Mask >>> Bit) & 0b1) == 1) ? 0xFF : 0;   //Get the mask bit                               
-                                MenaceColor = Color.FromArgb( Alpha, MenaceColor );
-                                bmp.SetPixel( x, y, MenaceColor );
+                                //Color MenaceColor = Aliens[AlienIndex].ColorForIndex(b);
+                                //int Alpha = (((Mask >>> Bit) & 0b1) == 1) ? 0xFF : 0;   //Get the mask bit                               
+                                //MenaceColor = Color.FromArgb(Alpha, MenaceColor);
+                                //bmp.SetPixel(x, y, MenaceColor);
+                                
+                                byte Index = (byte)(b);
+                                IntPtr Pixel = BmpData.Scan0 + (x) + (y * bmp.Width);
+                                Marshal.WriteByte(Pixel, Index);
                             }
                         }
                     }
                     MasterSpriteIndex++;
                 }
+
+                bmp.UnlockBits(BmpData);
 
                 Console.WriteLine( "Writing: " + FileName );
                 bmp.Save( OutputPath + FileName, ImageFormat.Png );
@@ -228,14 +241,15 @@ class MenanceAliensToPNG
             Console.WriteLine( "Reading Palette For:"  + Aliens[AlienIndex].OutputFileName );
             String RawColours = ColoursStream.ReadLine(); 
             Console.WriteLine( "RawColours: "  + RawColours );
+            Aliens[AlienIndex].AlienColorsPalette = new SourceCodeToColorPalette(RawColours);
             RawColours = RawColours.Replace( "DC.W", "" );
             RawColours = RawColours.Trim();
-            String[] SplitColorsHex = RawColours.Split(","); 
+            String[] SplitColorsHex = RawColours.Split(",");                        
             for (int i = 0; i < SplitColorsHex.Length; i++)
             {
                 SplitColorsHex[i] = SplitColorsHex[i].Replace("$0", "");
-                int HexColor = int.Parse( SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber );
-                Console.WriteLine( "Color[" + i + "]: "  + HexColor + " 0x" + SplitColorsHex[i]);
+                int HexColor = int.Parse(SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber);
+                Console.WriteLine("Color[" + i + "]: " + HexColor + " 0x" + SplitColorsHex[i]);
                 Aliens[AlienIndex].MenaceColours[i] = (UInt16)HexColor;
             }
             Aliens[AlienIndex].ConvertMenaceColorsToRGB();
@@ -266,14 +280,32 @@ class SourceCodeToColorPalette
         FileName = InFileName;
         Palette = new List<Color>();
         Console.WriteLine("DataPath: " + DataPath + "\\" + FileName);
-        ParsePalette();
+        ParsePaletteFromFile();
     }
 
-    void ParsePalette()
+    public SourceCodeToColorPalette(String RawSourceCodeData )
     {
-        // Load and parse the colours from a text file pasted from menace.s
+        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.00");
+        Palette = new List<Color>();
+        Console.WriteLine("RawSourceCodeData: " + RawSourceCodeData);
+        ParsePaletteFromString( RawSourceCodeData );
+    }
+
+    void ParsePaletteFromFile()
+    {
         Console.WriteLine("Reading Palette For:" + FileName);
         using StreamReader ColoursStream = new StreamReader(DataPath + FileName);
+        {
+            String StringRawData = ColoursStream.ReadToEnd();
+            ParsePaletteFromString(StringRawData);
+        }
+        ColoursStream.Close();
+    }
+
+    void ParsePaletteFromString( String PaletteRawData )
+    {
+        // Load and parse the colours from a text file pasted from menace.s
+        StringReader ColoursStream = new StringReader( PaletteRawData );
 
         String RawColours;
         while ((RawColours = ColoursStream.ReadLine()) != null)
