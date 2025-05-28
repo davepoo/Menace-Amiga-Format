@@ -12,7 +12,7 @@ class MenanceTools
 {
     static void Main(string[] args)
     {
-        MenanceAliensToPNG MenaceToPNG = new MenanceAliensToPNG(args);
+        MenaceAliensToPNG MenaceToPNG = new MenaceAliensToPNG(args);
         MenaceToPNG.Run();
 
         MenaceBackgroundsToPNG MenaceBackgroundsToPNG = new MenaceBackgroundsToPNG(args);
@@ -32,7 +32,6 @@ struct Alien
         OutputFileName = "Aliens_" + InMenaceSpriteName + ".png";
         AlienIndex = Index;
         NumSprites = InNumSprites;
-        ConvertMenaceColorsToRGB();
     }
 
     int AlienIndex = 0;
@@ -41,56 +40,12 @@ struct Alien
 
     public String MenaceSpriteName = "MenaceSprite";
 
-    readonly static int NumColors = 8;
-
-    /** 8 colors in Menace Form, 4bit RGB 
-    * The default value here is from the explosion sprite (1st in the aliens file)*/ 
-    public UInt16[] MenaceColours = { 0x0332,0x0055,0x0543,0x0000,0x0DFF,0x06AC,0x036A,0x0038 };
-
     /** 8 Colors in ARGB format */    
-    Color[] AlienColorsRGB = new Color[NumColors];
-
     public SourceCodeToColorPalette AlienColorsPalette;
-
-    public void ConvertMenaceColorsToRGB()
-    {
-        for (int i = 0; i < NumColors; i++)
-        {
-            AlienColorsRGB[i] = IndexToMenaceColor(i);
-        }
-    }
-
-    public Color ColorForIndex( int Index )
-    {
-        return AlienColorsRGB[Index % NumColors];
-    }
-
-    /** Convert the index read from the aliens file into an RGB color */ 
-    readonly Color IndexToMenaceColor( int Index ) 
-    {
-        const int MaxColors = 8;
-        int I = Index % MaxColors;
-        UInt32 RawColor = MenaceColours[I];
-        return Amiga4BitColorToRGBColor( RawColor );
-    }
-
-    /** Convert Amiga 4-bit color value to RGB Color */
-   public static Color Amiga4BitColorToRGBColor( UInt32 RawColor )
-    {
-        // Convert 4bit color to RGB
-        const int FourBitShift = 4;
-        const int FourBitMask = 0xF;
-        const int FourBitToByte = 16; 
-        int A = 0xFF;
-        uint B = ((RawColor >>> 0x0) & FourBitMask) * FourBitToByte;
-        uint G = ((RawColor >>> FourBitShift) & FourBitMask) * FourBitToByte;
-        uint R = ((RawColor >>> (FourBitShift * 2)) & FourBitMask) * FourBitToByte;
-        return Color.FromArgb((byte)A, (byte)R, (byte)G, (byte)B);
-    }
 
 };
 
-class MenanceAliensToPNG
+class MenaceAliensToPNG
 {
     const int NumAliensInPackedFile = 15;
     Alien[] Aliens = new Alien[NumAliensInPackedFile];
@@ -100,9 +55,9 @@ class MenanceAliensToPNG
 
     String OutputPath;
 
-    public MenanceAliensToPNG( string[] args )
+    public MenaceAliensToPNG( string[] args )
     {
-        Console.WriteLine("Menace 'Aliens' to PNG - DavePoo2 May 2025 - v1.00");
+        Console.WriteLine("Menace 'Aliens' to PNG - DavePoo2 May 2025 - v1.01");
 
         if ( args.Length == 0 )
         {
@@ -241,18 +196,7 @@ class MenanceAliensToPNG
             Console.WriteLine( "Reading Palette For:"  + Aliens[AlienIndex].OutputFileName );
             String RawColours = ColoursStream.ReadLine(); 
             Console.WriteLine( "RawColours: "  + RawColours );
-            Aliens[AlienIndex].AlienColorsPalette = new SourceCodeToColorPalette(RawColours);
-            RawColours = RawColours.Replace( "DC.W", "" );
-            RawColours = RawColours.Trim();
-            String[] SplitColorsHex = RawColours.Split(",");                        
-            for (int i = 0; i < SplitColorsHex.Length; i++)
-            {
-                SplitColorsHex[i] = SplitColorsHex[i].Replace("$0", "");
-                int HexColor = int.Parse(SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber);
-                Console.WriteLine("Color[" + i + "]: " + HexColor + " 0x" + SplitColorsHex[i]);
-                Aliens[AlienIndex].MenaceColours[i] = (UInt16)HexColor;
-            }
-            Aliens[AlienIndex].ConvertMenaceColorsToRGB();
+            Aliens[AlienIndex].AlienColorsPalette = new SourceCodeToColorPalette(RawColours);            
         }
         ColoursStream.Close();
 
@@ -275,7 +219,7 @@ class SourceCodeToColorPalette
 
     public SourceCodeToColorPalette(String InDataPath, String InFileName)
     {
-        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.00");
+        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.01");
         DataPath = InDataPath + "\\";
         FileName = InFileName;
         Palette = new List<Color>();
@@ -283,12 +227,12 @@ class SourceCodeToColorPalette
         ParsePaletteFromFile();
     }
 
-    public SourceCodeToColorPalette(String RawSourceCodeData )
+    public SourceCodeToColorPalette(String RawSourceCodeData)
     {
-        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.00");
+        Console.WriteLine("Menace 'Palette' to PNG - DavePoo2 May 2025 - v1.01");
         Palette = new List<Color>();
         Console.WriteLine("RawSourceCodeData: " + RawSourceCodeData);
-        ParsePaletteFromString( RawSourceCodeData );
+        ParsePaletteFromString(RawSourceCodeData);
     }
 
     void ParsePaletteFromFile()
@@ -302,10 +246,10 @@ class SourceCodeToColorPalette
         ColoursStream.Close();
     }
 
-    void ParsePaletteFromString( String PaletteRawData )
+    void ParsePaletteFromString(String PaletteRawData)
     {
         // Load and parse the colours from a text file pasted from menace.s
-        StringReader ColoursStream = new StringReader( PaletteRawData );
+        StringReader ColoursStream = new StringReader(PaletteRawData);
 
         String RawColours;
         while ((RawColours = ColoursStream.ReadLine()) != null)
@@ -323,7 +267,7 @@ class SourceCodeToColorPalette
                     int HexColor = int.Parse(SplitColorsHex[i], System.Globalization.NumberStyles.HexNumber);
                     //Console.WriteLine( "Color[" + i + "]: "  + HexColor + " 0x" + SplitColorsHex[i]);
                     UInt16 RawColorValue = (UInt16)HexColor;
-                    Palette.Add(Alien.Amiga4BitColorToRGBColor(RawColorValue));
+                    Palette.Add( Amiga4BitColorToRGBColor(RawColorValue) );
                 }
             }
             else
@@ -359,6 +303,20 @@ class SourceCodeToColorPalette
         }
         bmp.Palette = PaletteClone;
     }
+    
+    /** Convert Amiga 4-bit color value to RGB Color */
+   public static Color Amiga4BitColorToRGBColor( UInt32 RawColor )
+    {
+        // Convert 4bit color to RGB
+        const int FourBitShift = 4;
+        const int FourBitMask = 0xF;
+        const int FourBitToByte = 16; 
+        int A = 0xFF;
+        uint B = ((RawColor >>> 0x0) & FourBitMask) * FourBitToByte;
+        uint G = ((RawColor >>> FourBitShift) & FourBitMask) * FourBitToByte;
+        uint R = ((RawColor >>> (FourBitShift * 2)) & FourBitMask) * FourBitToByte;
+        return Color.FromArgb((byte)A, (byte)R, (byte)G, (byte)B);
+    }    
 };
 
 /** Menace backgrounds are stored in Meance.s with the label "backgrounds"
@@ -399,7 +357,7 @@ class MenaceBackgroundsToPNG
 
     public MenaceBackgroundsToPNG(string[] args)
     {
-        Console.WriteLine("Menace 'Backgrounds' to PNG - DavePoo2 May 2025 - v1.00");
+        Console.WriteLine("Menace 'Backgrounds' to PNG - DavePoo2 May 2025 - v1.01");
 
         if (args.Length == 0)
         {
@@ -686,7 +644,7 @@ class MenaceForegroundsToPNG
 
     public MenaceForegroundsToPNG(string[] args)
     {
-        Console.WriteLine("Menace 'Foregrounds' to PNG - DavePoo2 May 2025 - v1.00");
+        Console.WriteLine("Menace 'Foregrounds' to PNG - DavePoo2 May 2025 - v1.01");
 
         if (args.Length == 0)
         {
