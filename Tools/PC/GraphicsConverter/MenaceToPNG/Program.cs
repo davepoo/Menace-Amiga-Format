@@ -483,10 +483,13 @@ class MenaceBackgroundsToPNG
     void WriteBackgroundsPNG()
     {
         // Turn #BackgroundsRawData into a PNG
-        Bitmap bmp = new(BlockWidthPixels, BlockHeightPixels * NumBlocks);
-
         String FileName = "backgrounds.png";
         Console.WriteLine("Writing: " + FileName);
+
+        Bitmap bmp = new(BlockWidthPixels, BlockHeightPixels * NumBlocks, PixelFormat.Format8bppIndexed);
+        Palette.WritePaletteToImage( bmp );
+        BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+            ImageLockMode.ReadWrite, bmp.PixelFormat);
 
         for (int BlockIndex = 0; BlockIndex < NumBlocks; BlockIndex++)
         {
@@ -505,13 +508,16 @@ class MenaceBackgroundsToPNG
                     {
                         int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1);
                         int x = (i * 8) + (7 - Bit);
-                        //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
-                        Color MenaceColor = Palette.IndexToColor(b);
-                        bmp.SetPixel(x, y, MenaceColor);
+                        //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);                        
+                        byte Index = (byte)(b);
+                        IntPtr Pixel = BmpData.Scan0 + (x) + (y * bmp.Width);
+                        Marshal.WriteByte(Pixel, Index);
                     }
                 }
             }
         }
+
+        bmp.UnlockBits(BmpData);
 
         Console.WriteLine("Writing: " + FileName);
         bmp.Save(OutputPath + FileName, ImageFormat.Png);
