@@ -131,13 +131,14 @@ class MenaceAliensToPNG
                             {
                                 int b = ((b0 >>> Bit) & 0b1) | (((b1 >>> Bit) & 0b1) << 1) | (((b2 >>> Bit) & 0b1) << 2);
                                 int x = (i * 8) + (7 - Bit);
+
                                 //Console.WriteLine("Writing x=" + x + " y= " + Row + " Val=" + b);
-                                //Color MenaceColor = Aliens[AlienIndex].ColorForIndex(b);
-                                //int Alpha = (((Mask >>> Bit) & 0b1) == 1) ? 0xFF : 0;   //Get the mask bit                               
-                                //MenaceColor = Color.FromArgb(Alpha, MenaceColor);
-                                //bmp.SetPixel(x, y, MenaceColor);
+                                // If we are not on the mask, then color that with the last color
+                                // index in the palette, so that we could recover the mask later if required
+                                byte PixelColorIndex = (byte)(b);
+                                const byte MaskColorIndex = 0xFF;
+                                byte Index = (((Mask >>> Bit) & 0b1) == 0) ? MaskColorIndex : PixelColorIndex;   
                                 
-                                byte Index = (byte)(b);
                                 IntPtr Pixel = BmpData.Scan0 + (x) + (y * bmp.Width);
                                 Marshal.WriteByte(Pixel, Index);
                             }
