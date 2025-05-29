@@ -175,8 +175,8 @@ class MenaceAliensToPNG
         Aliens[Index] = new Alien( "jellyfish2", 4, Index++ );
         Aliens[Index] = new Alien( "bordertl", 6, Index++ );
         Aliens[Index] = new Alien( "borderbl", 6, Index++ );
-        Aliens[Index] = new Alien( "borderbl", 6, Index++ );
         Aliens[Index] = new Alien( "bordertr", 6, Index++ );
+        Aliens[Index] = new Alien( "borderbr", 6, Index++ );
         Aliens[Index] = new Alien( "mouth", 8, Index++ );
         Aliens[Index] = new Alien( "slime", 9, Index++ );
         Aliens[Index] = new Alien( "snakebody", 1, Index++ );

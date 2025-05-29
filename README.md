@@ -98,6 +98,43 @@ I've exported the background and foreground image and map data into a format tha
 
 The foreground map data can be exported from "Tiled" using the ![menace_foregrounds_exporter.js](Tools/PC/Tiled/menace_foregrounds_exporter.js) export script. This script needs to be added to the "Tiled" extensions folder to be seen as an option on the "Export As" screen. I've called the file extension .vmap, but Menace had no file extensions for any of it's file formats.
 
+# File Formats
+
+These are the orginal file formats for the Menace Source Code as provided by the Amiga Format source:
+
+## Aliens - Source/ALIENS
+
+This file contains all the level 1 aliens and the explosion packed into a single file.
+
+* Each frame of an alien is 32w x 24h x 4 bitplanes.
+* There are 3 bit planes + 1 mask bit plane. The mask is stored last
+* Each aliens can have a different numbers of frames, the number per alien is hard coded into the source code, it is not encoded in the file, so changing the number of frames requires a source code change.
+* Note that the *border* alien is split into 4 parts top-left, bottom-left, top-right, bottom-right
+
+| Alien         | Num Frames    |
+|-----          | ---           | 
+| explosion1    | 9             | 
+| guardian.eye1 | 4             |
+| tadpole       | 4             |
+| eye           | 15            |
+| bubble        | 4             |
+| jellyfish1    | 4             |
+| jellyfish2    | 4             |
+| bordertl      | 6             |
+| borderbl      | 6             |
+| bordertr      | 6             |
+| borderbr      | 6             |
+| mouth         | 8             |
+| slime         | 9             |
+| snakebody     | 1             |
+| snakehead     | 5             |
+
+The colour palette for each alien is stored in 
+"alien.colours" in MENACE.S
+
+Each *DC.W* line encodes 8 colours for each alien starting on the 3rd line (e.g. line 3 is the 8 colours for *explosion1* ). see "copy.path" in MENACE.S for where it copies the palettes in for an alien.
+
+The 8 colours are shared with the background tiles, so the first 3 entries in each alien palette are the same 3 colours (for the tiles). The other 5 are used for the alien itself (however each alien defines all 8 colours so if the first 3 were to change then the background would change colour when that alien appeared on screen.)
 
 
 
