@@ -108,8 +108,9 @@ This file contains all the level 1 aliens and the explosion packed into a single
 
 * Each frame of an alien is 32w x 24h x 4 bitplanes.
 * There are 3 bit planes + 1 mask bit plane. The mask is stored last
-* Each aliens can have a different numbers of frames, the number per alien is hard coded into the source code, it is not encoded in the file, so changing the number of frames requires a source code change.
-* Note that the *border* alien is split into 4 parts top-left, bottom-left, top-right, bottom-right
+* Each alien can have a different numbers of frames, the number per alien is hard coded into the source code, it is not encoded in the file, so changing the number of frames requires a source code change.
+* Note that the large *border* alien is split into 4 parts top-left, bottom-left, top-right, bottom-right
+* see *alien.pointers* in MENACE.S for where the number of frames (and byte offsets are encoded)
 
 | Alien         | Num Frames    |
 |-----          | ---           | 
@@ -135,6 +136,60 @@ The colour palette for each alien is stored in
 Each *DC.W* line encodes 8 colours for each alien starting on the 3rd line (e.g. line 3 is the 8 colours for *explosion1* ). see "copy.path" in MENACE.S for where it copies the palettes in for an alien.
 
 The 8 colours are shared with the background tiles, so the first 3 entries in each alien palette are the same 3 colours (for the tiles). The other 5 are used for the alien itself (however each alien defines all 8 colours so if the first 3 were to change then the background would change colour when that alien appeared on screen.)
+
+## Backgrounds (Assembled into MENACE.S)
+
+* *backgrounds* - is the pixel data for the background tileset
+* *backgroundtable* - is the tile map
+
+### backgroundtable
+
+This is encoded as 4-bits per tile index, allowing for a maximum possible tileset count of 16 tiles.
+
+The tiles map is 24w x 12h and stored in row order (top row, 2nd row, 3rd row etc...)
+
+### backgrounds
+
+These are 16w x 16h x 2 bit plane tiles with no mask.
+
+There is a max possible count of 16 tiles, but there are only 12 level 1 tiles encoded into the source.
+
+Tiles are stored sequentially, index 0 is stored first.
+
+![Backgrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/backgrounds.png)
+
+The palette is encoded into "level.colours" in MENACE.S but each alien also overwrites that palette.
+
+## Foregrounds ( Source/map & Source/foregrounds )
+
+* *foregrounds* - This is the pixel data for the foreground tileset
+* *map* - This is the tile map
+
+### foregrounds
+
+These are 16w x 16h x 3 bit plane tiles with no mask.
+
+There are 255 tiles in the set. Tiles are stored sequentially, index 0 is stored first.
+
+![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/foregrounds.png)
+
+### map
+
+This is encoded as 8-bits per tile index, allowing for 255 tiles. 
+
+Tile index 0xFF is used as an end of level marker and therefore cannot be used in the tileset.
+
+The map is 440 tiles across by 12 tiles high.
+
+The data is encoded in columns, so the left most column of 12 blocks is stored first (top to bottom), then then 2nd column. This is to make it easier for Menace drawing routine as it only draws one column at a time.
+
+
+
+
+
+
+
+
 
 
 
