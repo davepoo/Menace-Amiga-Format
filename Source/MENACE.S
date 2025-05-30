@@ -94,9 +94,22 @@ load_file_start
 	beq	MemError			; This instead be FileError
 	
 	; File is opened success
+	move.l	d0,-(sp)		; store the file handle on the stack
+	
+	; d1 FileHandle
+	; d2 Buffer
+	; d3 buffer length
+	move.l	d0,d1			; d1 is the file handle
+	move.l  MemBase,d2		; d2 buffer to read into (using Membase for test, this will overriten later)
+	move.l	#16,d3			; d3 buffer length (using 16 bytes as a test)
+	jsr	_LVORead(a6)		; read the next chunk of data
+	; d0 returns
+	;  0 meaning end of file
+	; -1 meaning error
+	; >0 is the number of bytes read from the file
 	
 	; Close the file
-	move.l	d0,d1			; close expects file handle in d1
+	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr	_LVOClose(a6)		; returns success in d0
 load_file_end
 	
