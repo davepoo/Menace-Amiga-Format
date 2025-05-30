@@ -29,6 +29,7 @@
 	include 	funcdef.i		* @davepoo2 implements FUNCDEF macro for devpac
 	include 	menace.i		* @davepoo2 macros etc written to support menace
 	include 	libraries/dos_lib.i
+	include		dos/dos.i
 	include 	exec/exec_lib.i
 	IFND	HARDWARE_CUSTOM_I
 	include 	hardware/custom.i
@@ -79,9 +80,30 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	tst.l	d0			where screens,samples etc
 	beq	MemError		must be (bottom 512K)
 	move.l	d0,MemBase
+	 
+load_file_start	 	
+	; read in file(s) we need
+	move.l	DOSBase,a6
+	move.l	#MODE_OLDFILE,d2	; d2 access mode
+	lea	AliensFilename(pc),a0
+	move.l	a0,d1			; d1 filename
+	jsr	_LVOOpen(a6)
+	
+	; check the file opened correctly
+	cmpi.l	#0,d0				; d0 is file handle, > 0 if success
+	beq	MemError			; This instead be FileError
+	
+	; File is opened success
+	
+	; Close the file
+	move.l	d0,d1			; close expects file handle in d1
+	jsr	_LVOClose(a6)		; returns success in d0
+load_file_end
+	
 
 *******************************************************************************
 
+	move.l	MemBase,d0		restore d0 to the memory we allocated from the system
 	lea	variables(pc),a5	a5 is the variables pointer
 	lea	rasters(a5),a0
 	lea	displayraster(a5),a1
@@ -2974,6 +2996,8 @@ GraphicsBase		dc.l	0
 GraphicsName	dc.b	'graphics.library',0
 	even
 DOSName		dc.b	'dos.library',0
+	even
+AliensFilename	dc.b	'Menace2024:MenaceFixed/map',0
 
 *******************************************************************************
 
