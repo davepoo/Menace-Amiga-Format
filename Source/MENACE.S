@@ -86,11 +86,11 @@ file_chip_memory
 MemNeeded_LoadedFiles_Chip equ 1024 * 50			needs to be enough memory to hold all the files loaded into chip RAM
 	move.l	#MemNeeded_LoadedFiles_Chip,d0		num bytes to allocate
 	moveq.l #MEMF_CHIP,d1				requires chip memory
-	jsr	_LVOAllocMem(a6)
+	jsr	_LVOAllocVec(a6)
 	tst.l	d0
 	beq	MemError
 	move.l	d0,MemBaseChip_Files	
-	 
+		 
 load_file_start	 	
 	; read in file(s) we need
 ReadFileChunkSize equ 512		; the max number of bytes to read at once from the file
@@ -107,7 +107,7 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	; File is opened success
 	move.l	d0,-(sp)		; store the file handle on the stack
 	
-	; --- AllocMem --- 
+	; --- ReadFile --- 
 	; d1 FileHandle
 	; d2 Buffer
 	; d3 buffer length
@@ -135,6 +135,8 @@ load_file_close
 	; Close the file
 	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr	_LVOClose(a6)		; returns success in d0
+	cmpi.w	#0,d0
+	beq	MemError		; failed to close the file correctly
 load_file_end
 
 setup_file_variables
@@ -187,6 +189,7 @@ setup_file_variables
 	
 	
 ******	music init (ptplayer) ***********
+	IFD MENACE_ENABLE_MUSIC
 	move	S_VBR,a0	  ; a0 Vector Base Register
 	moveq	#1,d0		  ; d0 PAL/NTSC - 0 is NTSC
 	jsr	_mt_install	  ; setup cia interrupts
@@ -196,6 +199,7 @@ setup_file_variables
 	move	d0,a1		  ; a1 pointer to the samples
 	jsr	_mt_init	  ; initialise mod file
 	move.b	#1,_mt_Enable	  ; start the music
+	ENDC
 
 *******************************************************************************
 
@@ -2910,9 +2914,8 @@ MemError
 	move.l	#MemNeeded,d0		free the memory we took
 	jsr	_LVOFreeMem(a6)
 	
-	move.l	MemBaseChip_Files,a1
-	move.l	#MemNeeded_LoadedFiles_Chip,d0
-	jsr	_LVOFreeMem(a6)
+	move.l	MemBaseChip_Files,a1	the block to free
+	jsr	_LVOFreeVec(a6)
 	
 	move.l	GraphicsBase,a1	
 	jsr	_LVOCloseLibrary(a6)
@@ -3022,9 +3025,11 @@ RestoreSystemCopper
 	jsr	GfxWaitTOF(a6)	; wait another frame in case of interlaced mode
 	
 Music
+	IFD MENACE_ENABLE_MUSIC
 	move.l	#Hardware,a6
 	jsr	_mt_end		; stop the music
 	jsr	_mt_remove	; unregister interrupts
+	ENDC
 	
 ; TODO : reply to workbench message
 
