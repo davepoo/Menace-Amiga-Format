@@ -23,4 +23,6 @@ blitter_wait MACRO
 	bne	\@
 	ENDM
 	
+MENACE_ENABLE_MUSIC SET 1	
+	
 	ENDC	; MENACE_I	

@@ -83,7 +83,7 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	move.l	d0,MemBase
 	
 file_chip_memory
-MemNeeded_LoadedFiles_Chip equ 1024 * 50			needs to be enough memory to hold all the files loaded into chip RAM
+MemNeeded_LoadedFiles_Chip equ 1024*50			needs to be enough memory to hold all the files loaded into chip RAM
 	move.l	#MemNeeded_LoadedFiles_Chip,d0		num bytes to allocate
 	moveq.l #MEMF_CHIP,d1				requires chip memory
 	jsr	_LVOAllocVec(a6)
@@ -105,7 +105,7 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	beq	MemError			; This instead be FileError
 	
 	; File is opened success
-	move.l	d0,-(sp)		; store the file handle on the stack
+	move.l	d0,-(sp)		; store the file handlrrrrrrrrrrrrrrrre on the stack
 	
 	; --- ReadFile --- 
 	; d1 FileHandle
@@ -118,24 +118,25 @@ load_file_read_loop
 	move.l	(sp),d1			; d1 is the file handle
 	move.l  MemBaseChip_Files,d2	; d2 buffer to read into (using MembaseChip_Files for test)
 	add.l	d4,d2			; offset to the next chunk to read
-	move.l	#ReadFileChunkSize,d3	; d3 buffer length
+	move.l	#ReadFileChunkSize,d3	; d3 buffer length	
 	jsr	_LVORead(a6)		; read the next chunk of data
 	; d0 returns
 	;  0 meaning end of file
 	; -1 meaning error
-	; >0 is the number of bytes read from the file
+	; >0 is the number of bytes read from the file	
 	tst.l	d0
 	beq	load_file_close		; reached end of file, finished
 	blt	MemError		; This should be file error??
 load_file_next_chunk	
 	add.l	d0,d4			; add in the offset to what was read
+	; TODO(davepoo2): test that the amount read doesnt exceed the buffer
 	bra	load_file_read_loop	; read the next chunk
 	
 load_file_close	
 	; Close the file
 	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr	_LVOClose(a6)		; returns success in d0
-	cmpi.w	#0,d0
+	tst.l	d0
 	beq	MemError		; failed to close the file correctly
 load_file_end
 
