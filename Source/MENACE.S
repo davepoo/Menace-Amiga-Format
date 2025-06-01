@@ -101,7 +101,7 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	jsr	_LVOOpen(a6)
 	
 	; check the file opened correctly
-	cmpi.l	#0,d0				; d0 is file handle, > 0 if success
+	tst.l	d0				; d0 is file handle, > 0 if success
 	beq	MemError			; This instead be FileError
 	
 	; File is opened success
@@ -124,11 +124,11 @@ load_file_read_loop
 	;  0 meaning end of file
 	; -1 meaning error
 	; >0 is the number of bytes read from the file
-	cmpi.w	#0,d0
+	tst.l	d0
 	beq	load_file_close		; reached end of file, finished
 	blt	MemError		; This should be file error??
 load_file_next_chunk	
-	add.w	d0,d4			; add in the offset to what was read
+	add.l	d0,d4			; add in the offset to what was read
 	bra	load_file_read_loop	; read the next chunk
 	
 load_file_close	
