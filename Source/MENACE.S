@@ -30,6 +30,7 @@
 	include 	menace.i		* @davepoo2 macros etc written to support menace
 	include 	libraries/dos_lib.i
 	include		dos/dos.i
+	include		exec/memory.i
 	include 	exec/exec_lib.i
 	IFND	HARDWARE_CUSTOM_I
 	include 	hardware/custom.i
@@ -75,17 +76,27 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	move.l	d0,DOSBase
 
 	move.l	#MemNeeded,d0		properly allocate some chip
-	moveq.l	#2,d1			memory for screens etc.
+	moveq.l	#MEMF_CHIP,d1		memory for screens etc.
 	jsr	_LVOAllocMem(a6)	d1 = 2, specifies chip memory
 	tst.l	d0			where screens,samples etc
 	beq	MemError		must be (bottom 512K)
 	move.l	d0,MemBase
+	
+file_chip_memory
+MemNeeded_LoadedFile_Chip equ 1024 * 50			needs to be enough memory to hold all the files loaded into chip RAM
+	move.l	#MemNeeded_LoadedFiles_Chip,d0		num bytes to allocate
+	moveq.l #MEMF_CHIP,d1				requires chip memory
+	jsr	_LVOAllocMem(a6)
+	tst.l	d0
+	beq	MemError
+	move.l	d0,MemBaseChip_Files	
 	 
 load_file_start	 	
 	; read in file(s) we need
+ReadFileChunkSize equ 512		; the max number of bytes to read at once from the file
 	move.l	DOSBase,a6
 	move.l	#MODE_OLDFILE,d2	; d2 access mode
-	lea	AliensFilename(pc),a0
+	lea	FileName_Music(pc),a0
 	move.l	a0,d1			; d1 filename
 	jsr	_LVOOpen(a6)
 	
@@ -99,15 +110,26 @@ load_file_start
 	; d1 FileHandle
 	; d2 Buffer
 	; d3 buffer length
-	move.l	d0,d1			; d1 is the file handle
-	move.l  MemBase,d2		; d2 buffer to read into (using Membase for test, this will overriten later)
-	move.l	#16,d3			; d3 buffer length (using 16 bytes as a test)
+	; d4 num bytes read so far
+	clr.l	d4
+load_file_read_loop	
+	move.l	(sp),d1			; d1 is the file handle
+	move.l  MemBaseChip_Files,d2	; d2 buffer to read into (using MembaseChip_Files for test)
+	add.l	d4,d2			; add to the next chunk
+	move.l	#ReadFileChunkSize,d3	; d3 buffer length
 	jsr	_LVORead(a6)		; read the next chunk of data
 	; d0 returns
 	;  0 meaning end of file
 	; -1 meaning error
 	; >0 is the number of bytes read from the file
+	cmpi.w	#0,d0
+	beq	load_file_close		; reached end of file, finished
+	blt	MemError		; This should be file error??
+load_file_next_chunk	
+	add.w	d0,d4			; add in the offset to what was read
+	bra	load_file_read_loop	; read the next chunk
 	
+load_file_close	
 	; Close the file
 	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr	_LVOClose(a6)		; returns success in d0
@@ -2875,9 +2897,15 @@ alldone
 
 MemError
 	move.l	_SysBase,a6
+	
 	move.l	MemBase,a1
 	move.l	#MemNeeded,d0		free the memory we took
 	jsr	_LVOFreeMem(a6)
+	
+	move.l	MemBaseChip_Files,a1
+	move.l	#MemNeeded_LoadedFiles_Chip,d0
+	jsr	_LVOFreeMem(a6)
+	
 	move.l	GraphicsBase,a1	
 	jsr	_LVOCloseLibrary(a6)
 	move.l	DOSBase,a1		finally close the 
@@ -3002,6 +3030,7 @@ Level3Vector		dc.l	0
 SystemInts		dc.w	0
 SystemDMA		dc.w	0
 MemBase			dc.l	0
+MemBaseChip_Files	dc.l	0
 DOSBase			dc.l	0
 GraphicsBase		dc.l	0
 
@@ -3010,7 +3039,7 @@ GraphicsName	dc.b	'graphics.library',0
 	even
 DOSName		dc.b	'dos.library',0
 	even
-AliensFilename	dc.b	'Menace2024:MenaceFixed/map',0
+FileName_Music	dc.b	'Menace2024:MenaceFixed/spice.mod',0
 
 *******************************************************************************
 
