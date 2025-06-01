@@ -19,7 +19,10 @@
 * - Fixed startup/shutdown routine to work on AGA/68020/Workbench 3.2
 * - Added blitter waits where appropriate to fix issues on AGA/68020+
 * - Assembling with Devpac 3.01	
-* - Using PtPlayer by Frank Wille https://se.aminet.net/mus/play/ptplayer.readme 				    			 
+* - Using PtPlayer by Frank Wille https://se.aminet.net/mus/play/ptplayer.readme
+* ---------------------
+* Updates 2025 by DavePoo2
+* - Allocating chip mem for music mod and loading from file instead if incbin into the exe
 *
 *****************************************************************************
 
@@ -28,8 +31,8 @@
 *	incdir		"fast:devpac/include/"
 	include 	funcdef.i		* @davepoo2 implements FUNCDEF macro for devpac
 	include 	menace.i		* @davepoo2 macros etc written to support menace
-	include 	libraries/dos_lib.i
-	include		dos/dos.i
+	include 	libraries/dos_lib.i	* @davepoo2 For loading files before system shutdown
+	include		dos/dos.i		* @davepoo2 for #MEMF_CHIP
 	include		exec/memory.i
 	include 	exec/exec_lib.i
 	IFND	HARDWARE_CUSTOM_I
@@ -59,6 +62,11 @@ BackgroundMemory	equ	2*NumberPlanes*BytesPerBackPlane
 ForegroundMemory	equ	NumberPlanes*BytesPerForePlane
 MemNeeded		equ	BackgroundMemory+ForegroundMemory
 
+; Needs to be enough memory to hold all the files loaded into chip RAM
+; Do NOT use spaces in constant sums as DevPac will treat everthing after
+; the space as a comment
+MemNeeded_Files_Chip 	equ 	1024*50	
+
 FullFirepower		equ	0
 aliensize		equ	24<<6!3
 firedelay		equ	3
@@ -83,8 +91,7 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	move.l	d0,MemBase
 	
 file_chip_memory
-MemNeeded_LoadedFiles_Chip equ 1024*50			needs to be enough memory to hold all the files loaded into chip RAM
-	move.l	#MemNeeded_LoadedFiles_Chip,d0		num bytes to allocate
+	move.l	#MemNeeded_Files_Chip,d0		num bytes to allocate
 	moveq.l #MEMF_CHIP,d1				requires chip memory
 	jsr	_LVOAllocVec(a6)
 	tst.l	d0
@@ -105,7 +112,7 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	beq	MemError			; This instead be FileError
 	
 	; File is opened success
-	move.l	d0,-(sp)		; store the file handlrrrrrrrrrrrrrrrre on the stack
+	move.l	d0,-(sp)		; store the file handle on the stack
 	
 	; --- ReadFile --- 
 	; d1 FileHandle
