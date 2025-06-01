@@ -83,7 +83,7 @@ start	lea	GraphicsName(pc),a1	open the graphics library purely
 	move.l	d0,MemBase
 	
 file_chip_memory
-MemNeeded_LoadedFile_Chip equ 1024 * 50			needs to be enough memory to hold all the files loaded into chip RAM
+MemNeeded_LoadedFiles_Chip equ 1024 * 50			needs to be enough memory to hold all the files loaded into chip RAM
 	move.l	#MemNeeded_LoadedFiles_Chip,d0		num bytes to allocate
 	moveq.l #MEMF_CHIP,d1				requires chip memory
 	jsr	_LVOAllocMem(a6)
@@ -107,15 +107,17 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	; File is opened success
 	move.l	d0,-(sp)		; store the file handle on the stack
 	
+	; --- AllocMem --- 
 	; d1 FileHandle
 	; d2 Buffer
 	; d3 buffer length
+	; --- Registers used by the read loop ---
 	; d4 num bytes read so far
 	clr.l	d4
 load_file_read_loop	
 	move.l	(sp),d1			; d1 is the file handle
 	move.l  MemBaseChip_Files,d2	; d2 buffer to read into (using MembaseChip_Files for test)
-	add.l	d4,d2			; add to the next chunk
+	add.l	d4,d2			; offset to the next chunk to read
 	move.l	#ReadFileChunkSize,d3	; d3 buffer length
 	jsr	_LVORead(a6)		; read the next chunk of data
 	; d0 returns
@@ -134,7 +136,11 @@ load_file_close
 	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr	_LVOClose(a6)		; returns success in d0
 load_file_end
-	
+
+setup_file_variables
+	lea	variables(pc),a5
+	move.l	MemBaseChip_Files,d0	
+	move.l	d0,levelmusic(a5)	; store the pointer to the loaded levelmusic	
 
 *******************************************************************************
 
@@ -181,14 +187,15 @@ load_file_end
 	
 	
 ******	music init (ptplayer) ***********
-	move	S_VBR,a0	; a0 Vector Base Register
-	moveq	#1,d0		; d0 PAL/NTSC - 0 is NTSC
-	jsr	_mt_install	; setup cia interrupts
-	lea	levelmusic,a0	; a0 pointer to mod file to play
-	moveq	#0,d0		; d0 mod start location (pattern 0) 
-	move	d0,a1		; a1 pointer to the samples
-	jsr	_mt_init	; initialise mod file
-	move.b	#1,_mt_Enable	; start the music
+	move	S_VBR,a0	  ; a0 Vector Base Register
+	moveq	#1,d0		  ; d0 PAL/NTSC - 0 is NTSC
+	jsr	_mt_install	  ; setup cia interrupts
+	move.l	levelmusic(a5),d0 ; address of the mod to play
+	move.l	d0,a0 		  ; a0 pointer to mod file to play
+	moveq	#0,d0		  ; d0 mod start location (pattern 0) 
+	move	d0,a1		  ; a1 pointer to the samples
+	jsr	_mt_init	  ; initialise mod file
+	move.b	#1,_mt_Enable	  ; start the music
 
 *******************************************************************************
 
@@ -2728,6 +2735,7 @@ shipaddress	RS.L	1	ship animation address
 alien.buffer	RS.L	18
 explosion.ptr	RS.L	1
 guardian.data	RS.L	1
+levelmusic	RS.L	1	memory address of the level music .mod file
 
 vars.length	RS.B	0
 variables	DS.B	vars.length
@@ -3052,7 +3060,6 @@ aliens		incbin	aliens
 bonus.sprite	include	bonus.s
 mine		include mine.s
 guardian	incbin	guardian
-levelmusic	incbin	spice.mod
 
 
 missiletable	ds.b	512
