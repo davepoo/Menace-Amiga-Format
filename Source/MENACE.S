@@ -67,6 +67,8 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 ; the space as a comment
 MemNeeded_Files_Chip 	equ 	1024*50	
 
+ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
+
 FullFirepower		equ	0
 aliensize		equ	24<<6!3
 firedelay		equ	3
@@ -97,10 +99,11 @@ file_chip_memory
 	tst.l	d0
 	beq	MemError
 	move.l	d0,MemBaseChip_Files	
+	
+*******************************************************************************
 		 
 load_file_start	 	
 	; read in file(s) we need
-ReadFileChunkSize equ 512		; the max number of bytes to read at once from the file
 	move.l	DOSBase,a6
 	move.l	#MODE_OLDFILE,d2	; d2 access mode
 	lea	FileName_Music(pc),a0
@@ -121,7 +124,10 @@ ReadFileChunkSize equ 512		; the max number of bytes to read at once from the fi
 	; --- Registers used by the read loop ---
 	; d4 num bytes read so far
 	clr.l	d4
-load_file_read_loop	
+load_file_read_loop
+	cmpi.l	#MemNeeded_Files_Chip-ReadFileChunkSize,d4	; Test that the amount to read cant exceed the buffer size
+	bgt	load_file_fail		; The next read might not fit into the buffer so stop reading
+	
 	move.l	(sp),d1			; d1 is the file handle
 	move.l  MemBaseChip_Files,d2	; d2 buffer to read into (using MembaseChip_Files for test)
 	add.l	d4,d2			; offset to the next chunk to read
@@ -133,10 +139,9 @@ load_file_read_loop
 	; >0 is the number of bytes read from the file	
 	tst.l	d0
 	beq	load_file_close		; reached end of file, finished
-	blt	MemError		; This should be file error??
+	blt	load_file_fail		; Failed to read the file, close and quit application
 load_file_next_chunk	
 	add.l	d0,d4			; add in the offset to what was read
-	; TODO(davepoo2): test that the amount read doesnt exceed the buffer
 	bra	load_file_read_loop	; read the next chunk
 	
 load_file_close	
@@ -145,6 +150,12 @@ load_file_close
 	jsr	_LVOClose(a6)		; returns success in d0
 	tst.l	d0
 	beq	MemError		; failed to close the file correctly
+	bra 	load_file_end		; success
+load_file_fail
+	; Close the file then quit in error
+	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
+	jsr 	_LVOClose(a6)		; returns success in d0 
+	bra 	MemError		; we failed to read the file, so quit out now after free memory	
 load_file_end
 
 setup_file_variables
