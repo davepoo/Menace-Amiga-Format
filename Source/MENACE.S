@@ -3071,7 +3071,7 @@ GraphicsName	dc.b	'graphics.library',0
 	even
 DOSName		dc.b	'dos.library',0
 	even
-FileName_Music	dc.b	'Menace2024:MenaceFixed/spice.mod',0
+FileName_Music	dc.b	'spice.mod',0
 
 *******************************************************************************
 
