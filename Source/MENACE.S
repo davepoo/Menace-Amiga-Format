@@ -68,6 +68,7 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 ; the space as a comment
 MemNeeded_Files_Chip 	equ 	1024*50	
 
+AssetDelimeter		equ	","	Character used as a separator in the asset list text file
 ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
 StringBufferSize	equ	256	The max size of a string that can be read from asset list file
 
@@ -121,7 +122,7 @@ load_asset_list
 		
 .read_line	
 
-	; --- FGets Reads string up to newline char (or buffer size)  --- 
+	; --- Read  --- 
 	; d1 FileHandle
 	; d2 Buffer
 	; d3 buffer length
@@ -135,7 +136,39 @@ load_asset_list
 	beq	.close_asset_list	; 0 = end of file
 	
 	; decode the asset string in d0
-	; TODO(davepoo2)
+	; d0 = number of bytes read
+	; d2 = address of the buffer that was read
+	
+	move.l 	d2,a0		; a0 = address of current character
+	clr.l	d3		; d3 = number of characters in column
+.loop
+	move.b 	(a0)+,d1		; d1 = character
+	cmpi.b	#AssetDelimeter,d1	; hit the delimiter?
+	beq	.decode_digits
+	sub.b	#"0",d1			; turn character into decimal digit
+	move.b 	d1,-(sp)		; push the most significant digit onto the stack
+	addq.l	#1,d3			; count digits
+	bra	.loop
+.decode_digits
+	clr.l	d6			; d6 = final number
+	move.l	#1,d7			; d7 = 10s (decimal)
+.decode_digit
+	tst.l	d3			; were there any digits to read?
+	beq	.next_column
+	clr.l	d5
+	move.b	(sp)+,d5		; d5 = pop the least significant digit
+	mulu.l	d7,d5			; d5 = multiply digit by the decimal column 1s,10s etc
+	add.l 	d5,d6			; d6 = updated final number
+	mulu.l	#10,d7			; d7 = move to the next 10s (decimal)			
+	dbra	d3,.decode_digit	; move to the next digit 	
+
+.next_column	
+	
+	; TOOD(davepoo2) : the value stored in d3 needs to be used to index the asset (havent loaded the name of the asset yet)
+	; TODO(davepoo2) : need to read in the rest of the line
+	; TODO(davepoo2) : the buffer address in a0 needs to go back to to the start
+	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash
+	
 	
 	bra .read_line
 	
