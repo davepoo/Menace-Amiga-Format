@@ -26,7 +26,7 @@
 * - Loading .mod file using AmigaDos library before the system takeover 
 *
 *****************************************************************************
-
+	
 	section	Framework,code_c	
 
 *	incdir		"fast:devpac/include/"
@@ -70,6 +70,7 @@ MemNeeded_Files_Chip 	equ 	1024*50
 
 ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
 StringBufferSize	equ	256	The max size of a string that can be read from asset list file
+
 
 FullFirepower		equ	0
 aliensize		equ	24<<6!3
@@ -115,22 +116,23 @@ load_asset_list
 	tst.l	d0				; d0 open result, 0 = Error
 	beq 	MemError
 	
-.read_line	
 	; File opened successfully, d0 is the file handle
 	move.l	d0,-(sp)			; push file handle onto the stack
+		
+.read_line	
 
 	; --- FGets Reads string up to newline char (or buffer size)  --- 
 	; d1 FileHandle
 	; d2 Buffer
 	; d3 buffer length
 	move.l	(sp),d1			; d1 FileHandle
-	move.l	string.buffer,d2 	; d2 buffer to load string into
+	move.l	MemBaseChip_Files,d2 	; d2 buffer to load string into (TODO(daveapoo2): using our empty chip ram files buffer)
 	move.l	#StringBufferSize,d3	; d3 max size of the buffer
-	jsr	_LVOFGets(a6)	; returns in d0 the pointer to the buffer passed in
+	jsr	_LVORead(a6)		; returns in d0 the pointer to the buffer passed in
 
 	; test for the end of the file
 	tst.l	d0
-	beq	.close_asset_list
+	beq	.close_asset_list	; 0 = end of file
 	
 	; decode the asset string in d0
 	; TODO(davepoo2)
@@ -2641,6 +2643,7 @@ find.path2
 ;	jsr	Turnoff
 	bra	copy.path
 
+
 **************************************************************************
 
 
@@ -3171,16 +3174,14 @@ snakehead	equ	snakebody+(1*384)
 	ds.l	6
 
 
-
 path.buffer	ds.b	2048
 buffer0		ds.b	6144
 buffer1		ds.b	6144
 screen0bgnds	ds.b	256
 screen1bgnds	ds.b	256
 fgnd.buffer	ds.b	2048
-string.buffer	ds.b	StringBufferSize	; temp buffer used for loading strings
 
-	include 	ptplayer.asm
+	include 	ptplayer.asm	
 	end
 	
 	
