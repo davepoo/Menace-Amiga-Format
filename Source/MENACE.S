@@ -23,6 +23,7 @@
 * ---------------------
 * Updates 2025 by DavePoo2
 * - Allocating chip mem for music mod and loading from file instead if incbin into the exe
+* - Loading .mod file using AmigaDos library before the system takeover 
 *
 *****************************************************************************
 
@@ -68,6 +69,7 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 MemNeeded_Files_Chip 	equ 	1024*50	
 
 ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
+StringBufferSize	equ	256	The max size of a string that can be read from asset list file
 
 FullFirepower		equ	0
 aliensize		equ	24<<6!3
@@ -99,6 +101,48 @@ file_chip_memory
 	tst.l	d0
 	beq	MemError
 	move.l	d0,MemBaseChip_Files	
+
+*******************************************************************************
+*	load the level 1 asset list 	*
+*******************************************************************************
+
+load_asset_list
+	move.l	DOSBase,a6
+	move.l	#MODE_OLDFILE,d2		; d2 access mode
+	lea	FileName_Level1_Assets(pc),a0	
+	move.l	a0,d1				; d1 file name
+	jsr	_LVOOpen(a6)
+	tst.l	d0				; d0 open result, 0 = Error
+	beq 	MemError
+	
+.read_line	
+	; File opened successfully, d0 is the file handle
+	move.l	d0,-(sp)			; push file handle onto the stack
+
+	; --- FGets Reads string up to newline char (or buffer size)  --- 
+	; d1 FileHandle
+	; d2 Buffer
+	; d3 buffer length
+	move.l	(sp),d1			; d1 FileHandle
+	move.l	string.buffer,d2 	; d2 buffer to load string into
+	move.l	#StringBufferSize,d3	; d3 max size of the buffer
+	jsr	_LVOFGets(a6)	; returns in d0 the pointer to the buffer passed in
+
+	; test for the end of the file
+	tst.l	d0
+	beq	.close_asset_list
+	
+	; decode the asset string in d0
+	; TODO(davepoo2)
+	
+	bra .read_line
+	
+.close_asset_list	
+	; close the asset file
+	move.l	(sp)+,d1		; pop file handle from stack to d1
+	jsr	_LVOClose(a6)		; returns success in d0
+	
+		
 	
 *******************************************************************************
 		 
@@ -124,7 +168,7 @@ load_file_start
 	; --- Registers used by the read loop ---
 	; d4 num bytes read so far
 	clr.l	d4
-load_file_read_loop
+.load_file_read_loop
 	cmpi.l	#MemNeeded_Files_Chip-ReadFileChunkSize,d4	; Test that the amount to read cant exceed the buffer size
 	bgt	load_file_fail		; The next read might not fit into the buffer so stop reading
 	
@@ -140,9 +184,8 @@ load_file_read_loop
 	tst.l	d0
 	beq	load_file_close		; reached end of file, finished
 	blt	load_file_fail		; Failed to read the file, close and quit application
-load_file_next_chunk	
 	add.l	d0,d4			; add in the offset to what was read
-	bra	load_file_read_loop	; read the next chunk
+	bra	.load_file_read_loop	; read the next chunk
 	
 load_file_close	
 	; Close the file
@@ -3072,6 +3115,8 @@ GraphicsName	dc.b	'graphics.library',0
 DOSName		dc.b	'dos.library',0
 	even
 FileName_Music	dc.b	'spice.mod',0
+	even
+FileName_Level1_Assets	dc.b	'assets_level1.txt',0
 
 *******************************************************************************
 
@@ -3125,12 +3170,15 @@ snakehead	equ	snakebody+(1*384)
 	dc.l	snakehead
 	ds.l	6
 
+
+
 path.buffer	ds.b	2048
 buffer0		ds.b	6144
 buffer1		ds.b	6144
 screen0bgnds	ds.b	256
 screen1bgnds	ds.b	256
 fgnd.buffer	ds.b	2048
+string.buffer	ds.b	StringBufferSize	; temp buffer used for loading strings
 
 	include 	ptplayer.asm
 	end
