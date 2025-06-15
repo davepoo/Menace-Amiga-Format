@@ -70,6 +70,7 @@ MemNeeded_Files_Chip 	equ 	1024*50
 MemNeeded_Files_Fast	equ	1024*50		
 
 AssetDelimeter		equ	","	Character used as a separator in the asset list text file
+AssetLineFeed		equ	10
 ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
 StringBufferSize	equ	256	The max size of a string that can be read from asset list file
 
@@ -166,7 +167,7 @@ load_asset_list
 	tst.l	d3			; were there any digits to read?
 	beq	.next_column
 	clr.l	d5
-	move.b	d3,d5			; d5 = the least significant BCD digit
+	move.b	d3,d5		; d5 = the least significant BCD digit
 	and.b	#%00001111,d5		; mask off the last BCD digit
 	mulu.l	d7,d5			; d5 = multiply digit by the decimal column 1s,10s etc
 	add.l 	d5,d6			; d6 = updated final number
@@ -174,9 +175,36 @@ load_asset_list
 	lsr.l	#4,d3			; read that BCD, move to the next
 	bra	.decode_digit		; move to the next digit 	
 
-.next_column	
+.next_column
+	; d3 = the number of assets to load for this set
+	; next character from the stream is either C or F for chip or fast ram for the asset
+	clr.l	d1
+	move.b (a0)+,d1
+	cmpi.b	#"C",d1
+	lea 	1(a0),a0		; increment a0 to get past the delimiter
+	beq	.requires_chip_memory
+	move.b 	#MEMF_FAST,d1
+	bra	.read_filename	
+.requires_chip_memory
+	move.b	#MEMF_CHIP,d1
+	bra	.read_filename
+
+.read_filename		
+	; d3 = the number of assets to load
+	; d1 = #MEMF_FAST or #MEMF_CHIP
+	; a0 = start of the filename string
 	
-	; TOOD(davepoo2) : the value stored in d3 needs to be used to index the asset (havent loaded the name of the asset yet)
+	move.l	a0,a1			; copy a0 to a1 so we dont destroy it
+	clr.l	d2
+.loop_find_newline
+	move.b	(a1)+,d2		; current char in d2
+	cmpi.b	#AssetLineFeed,d2	; is it the newline?
+	bne	.loop_find_newline
+	
+	; a1 now contains the address of the newline character 	
+	
+	
+	; TOOD(davepoo2) : the value stored in d3 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet)
 	; TODO(davepoo2) : need to read in the rest of the line
 	; TODO(davepoo2) : the buffer address in a0 needs to go back to to the start
 	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash

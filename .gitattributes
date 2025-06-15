@@ -4,3 +4,5 @@
 # Declare files that will always have LF line endings on checkout.
 *.s text eol=lf
 *.i text eol=lf
+assets_level1.txt text eol=lf
+
