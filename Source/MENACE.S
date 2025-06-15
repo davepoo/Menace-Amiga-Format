@@ -202,11 +202,19 @@ load_asset_list
 	bne	.loop_find_newline
 	
 	; a1 now contains the address of the newline character 	
+	; convert the newline to a 0 delimiter so the string
+	; can be used in the OS call to load the file
+	move.b	#0,a1		; convert to 0 delimited string in memory
+
+	; TODO(davepoo2) : find the address of the next space in chip/fast memory to load into	
+	; TODO(davepoo2) : offset by 4 to store the size of the next file
+	; TODO(davepoo2) : load the file in memory to the address given
+	; TODO(davepoo2) : store the address to file so the game can access the asset directly e.g. levelmusic needs to point to the start of spice.mod file in chip memory 
+	; TODO(davepoo2) : make it so you can jsr to the load file method with the correct parameters and it returns the number of bytes loaded.
 	
-	
+		
 	; TOOD(davepoo2) : the value stored in d3 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet)
-	; TODO(davepoo2) : need to read in the rest of the line
-	; TODO(davepoo2) : the buffer address in a0 needs to go back to to the start
+	; TODO(davepoo2) : need to handle the correct buffering of the line (what if we dont have enough of the asset list file)
 	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash
 	
 	
