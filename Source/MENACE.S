@@ -66,7 +66,8 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 ; Needs to be enough memory to hold all the files loaded into chip RAM
 ; Do NOT use spaces in constant sums as DevPac will treat everthing after
 ; the space as a comment
-MemNeeded_Files_Chip 	equ 	1024*50	
+MemNeeded_Files_Chip 	equ 	1024*50
+MemNeeded_Files_Fast	equ	1024*50		
 
 AssetDelimeter		equ	","	Character used as a separator in the asset list text file
 ReadFileChunkSize 	equ 	512	The max number of bytes to read at once from files
@@ -102,10 +103,19 @@ file_chip_memory
 	jsr	_LVOAllocVec(a6)
 	tst.l	d0
 	beq	MemError
-	move.l	d0,MemBaseChip_Files	
+	move.l	d0,MemBaseChip_Files
+	
+file_fast_memory
+	move.l	#MemNeeded_Files_Fast,d0		num bytes to allocate
+	moveq.l #MEMF_ANY,d1				requires fast memory
+	jsr	_LVOAllocVec(a6)
+	tst.l	d0
+	beq	MemError
+	move.l	d0,MemBaseFast_Files	
+		
 
 *******************************************************************************
-*	load the level 1 asset list 	*
+*	load the asset list and game assets 	*
 *******************************************************************************
 
 load_asset_list
@@ -140,14 +150,14 @@ load_asset_list
 	; d2 = address of the buffer that was read
 	
 	move.l 	d2,a0		; a0 = address of current character
-	clr.l	d3		; d3 = number of characters in column
+	clr.l	d3		; d3 = binary coded decimial, up to 4 digits
 .loop
 	move.b 	(a0)+,d1		; d1 = character
 	cmpi.b	#AssetDelimeter,d1	; hit the delimiter?
 	beq	.decode_digits
+	lsl.l	#4,d3			; shift the BDC digit left to make room for another
 	sub.b	#"0",d1			; turn character into decimal digit
-	move.b 	d1,-(sp)		; push the most significant digit onto the stack
-	addq.l	#1,d3			; count digits
+	or.b	d1,d3			; append the BCD digit into d3 
 	bra	.loop
 .decode_digits
 	clr.l	d6			; d6 = final number
@@ -156,11 +166,13 @@ load_asset_list
 	tst.l	d3			; were there any digits to read?
 	beq	.next_column
 	clr.l	d5
-	move.b	(sp)+,d5		; d5 = pop the least significant digit
+	move.b	d3,d5			; d5 = the least significant BCD digit
+	and.b	#%00001111,d5		; mask off the last BCD digit
 	mulu.l	d7,d5			; d5 = multiply digit by the decimal column 1s,10s etc
 	add.l 	d5,d6			; d6 = updated final number
 	mulu.l	#10,d7			; d7 = move to the next 10s (decimal)			
-	dbra	d3,.decode_digit	; move to the next digit 	
+	lsr.l	#4,d3			; read that BCD, move to the next
+	bra	.decode_digit		; move to the next digit 	
 
 .next_column	
 	
@@ -3015,6 +3027,9 @@ MemError
 	move.l	MemBaseChip_Files,a1	the block to free
 	jsr	_LVOFreeVec(a6)
 	
+	move.l	MemBaseFast_Files,a1	the block to free
+	jsr	_LVOFreeVec(a6)
+	
 	move.l	GraphicsBase,a1	
 	jsr	_LVOCloseLibrary(a6)
 	move.l	DOSBase,a1		finally close the 
@@ -3142,6 +3157,7 @@ SystemInts		dc.w	0
 SystemDMA		dc.w	0
 MemBase			dc.l	0
 MemBaseChip_Files	dc.l	0
+MemBaseFast_Files	dc.l	0
 DOSBase			dc.l	0
 GraphicsBase		dc.l	0
 
