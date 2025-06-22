@@ -24,6 +24,8 @@
 * Updates 2025 by DavePoo2
 * - Allocating chip mem for music mod and loading from file instead if incbin into the exe
 * - Loading .mod file using AmigaDos library before the system takeover 
+* - Asset list has names of files and whether the load them into chip/fast RAM
+* - Allocating some fast RAM for assets that dont require to be in chip RAM
 *
 *****************************************************************************
 	
@@ -67,7 +69,8 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 ; Do NOT use spaces in constant sums as DevPac will treat everthing after
 ; the space as a comment
 MemNeeded_Files_Chip 	equ 	1024*50
-MemNeeded_Files_Fast	equ	1024*50		
+MemNeeded_Files_Fast	equ		1024*50		
+MemNeeded_AssetList_Fast equ	1024*4
 
 AssetDelimeter		equ	","	Character used as a separator in the asset list text file
 AssetLineFeed		equ	10
@@ -113,6 +116,14 @@ file_fast_memory
 	tst.l	d0
 	beq	MemError
 	move.l	d0,MemBaseFast_Files	
+
+file_assetlist_memory
+	move.l	#MemNeeded_AssetList_Fast,d0	num bytes to allocate
+	moveq.l #MEMF_ANY,d1					requires fast memory
+	jsr	_LVOAllocVec(a6)
+	tst.l	d0
+	beq	MemError
+	move.l	d0,MemBaseFast_AssetList
 		
 
 *******************************************************************************
@@ -120,42 +131,28 @@ file_fast_memory
 *******************************************************************************
 
 load_asset_list
-	move.l	DOSBase,a6
-	move.l	#MODE_OLDFILE,d2		; d2 access mode
-	lea	FileName_Level1_Assets(pc),a0	
-	move.l	a0,d1				; d1 file name
-	jsr	_LVOOpen(a6)
-	tst.l	d0				; d0 open result, 0 = Error
-	beq 	MemError
-	
-	; File opened successfully, d0 is the file handle
-	move.l	d0,-(sp)			; push file handle onto the stack
-		
-.read_line	
+	lea	FileName_Level1_Assets(pc),a0	; a0 asset list filename to load
+	move.l	MemBaseFast_AssetList,a4	; a4 the buffer to load into
+	jsr load_asset_file
 
-	; --- Read  --- 
-	; d1 FileHandle
-	; d2 Buffer
-	; d3 buffer length
-	move.l	(sp),d1			; d1 FileHandle
-	move.l	MemBaseChip_Files,d2 	; d2 buffer to load string into (TODO(daveapoo2): using our empty chip ram files buffer)
-	move.l	#StringBufferSize,d3	; d3 max size of the buffer
-	jsr	_LVORead(a6)		; returns in d0 the pointer to the buffer passed in
-
-	; test for the end of the file
-	tst.l	d0
-	beq	.close_asset_list	; 0 = end of file
-	
 	; decode the asset string in d0
 	; d0 = number of bytes read
-	; d2 = address of the buffer that was read
+	; d2 = address of the buffer that was read											
+	move.l	a4,d2						
+read_line_asset_list	
+	; test for the end of the file
+	tst.l	d0				; d0 is the number of bytes left to read
+	beq	close_asset_list	; 0 bytes left means end of file
 	
 	move.l 	d2,a0		; a0 = address of current character
-	clr.l	d3		; d3 = binary coded decimial, up to 4 digits
+	clr.l	d3			; d3 = binary coded decimial, up to 4 digits
 .loop
-	move.b 	(a0)+,d1		; d1 = character
+	move.b 	(a0)+,d1			; d1 = character
+	sub.l	#1,d0				; d0 = decrement number of bytes read (read one byte)
+	cmpi.b	#AssetLineFeed,d1	; if the line starts with a newline then it's the end of file
+	beq		close_asset_list	; Finished
 	cmpi.b	#AssetDelimeter,d1	; hit the delimiter?
-	beq	.decode_digits
+	beq		.decode_digits
 	lsl.l	#4,d3			; shift the BDC digit left to make room for another
 	sub.b	#"0",d1			; turn character into decimal digit
 	or.b	d1,d3			; append the BCD digit into d3 
@@ -180,6 +177,7 @@ load_asset_list
 	; next character from the stream is either C or F for chip or fast ram for the asset
 	clr.l	d1
 	move.b (a0)+,d1
+	sub.l	#1,d0			; d0 = decrement number of bytes read (read one byte)
 	cmpi.b	#"C",d1
 	lea 	1(a0),a0		; increment a0 to get past the delimiter
 	beq	.requires_chip_memory
@@ -198,14 +196,29 @@ load_asset_list
 	clr.l	d2
 .loop_find_newline
 	move.b	(a1)+,d2		; current char in d2
+	sub.l	#1,d0			; d0 = decrement number of bytes read (read one byte)
 	cmpi.b	#AssetLineFeed,d2	; is it the newline?
 	bne	.loop_find_newline
 	
-	; a1 now contains the address of the newline character 	
+	; a1 now contains the address of the newline character + 1 
 	; convert the newline to a 0 delimiter so the string
 	; can be used in the OS call to load the file
-	move.b	#0,a1		; convert to 0 delimited string in memory
+	move.b	#0,-1(a1)		; convert newline to 0 delimited string in memory
 
+.load_asset_file
+	move.l	d0,-(sp)				; store d0 on the stack, the number of bytes left to read in the asset list
+	move.l	a1,-(sp)				; store a1 on the stack, the address of the next byte to read in the asset list				
+
+	cmpi.b	#MEMF_FAST,d1
+	beq 	.load_into_fastmem
+	move.l	MemBaseChip_Files,a4
+	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
+	bra setup_file_variables	
+.load_into_fastmem	
+	move.l	MemBaseFast_Files,a4
+	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
+
+	
 	; TODO(davepoo2) : find the address of the next space in chip/fast memory to load into	
 	; TODO(davepoo2) : offset by 4 to store the size of the next file
 	; TODO(davepoo2) : load the file in memory to the address given
@@ -218,22 +231,33 @@ load_asset_list
 	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash
 	
 	
-	bra .read_line
+setup_file_variables
+	lea	variables(pc),a5
+	move.l	a4,levelmusic(a5)	; store the pointer to the loaded levelmusic
+
+	; restore d2 and d0 from the stack before we loop to read the next asset
+	move.l	(sp)+,d2		; restore d2 from stack, the address of the next byte to read in the asset list				
+	move.l	(sp)+,d0		; restore d0 from the stack, the number of bytes left to read in the asset list	
+	bra read_line_asset_list
 	
-.close_asset_list	
-	; close the asset file
-	move.l	(sp)+,d1		; pop file handle from stack to d1
-	jsr	_LVOClose(a6)		; returns success in d0
+close_asset_list
+	; nothing to do here as the data is now just read from a perm loaded buffer
+	; all the assets have been loaded at this point
+	; so just skip to the normal program start
+	bra all_assets_loaded
 	
-		
 	
-*******************************************************************************
+****************** load asset file subroutine *******************************
 		 
-load_file_start	 	
+; Parameters
+; a0 - The address of the zero delimited filename string 
+; a4 - The address of the buffer to read into
+; Return
+; d0 - the number of bytes read for the file
+load_asset_file
 	; read in file(s) we need
 	move.l	DOSBase,a6
 	move.l	#MODE_OLDFILE,d2	; d2 access mode
-	lea	FileName_Music(pc),a0
 	move.l	a0,d1			; d1 filename
 	jsr	_LVOOpen(a6)
 	
@@ -252,11 +276,12 @@ load_file_start
 	; d4 num bytes read so far
 	clr.l	d4
 .load_file_read_loop
-	cmpi.l	#MemNeeded_Files_Chip-ReadFileChunkSize,d4	; Test that the amount to read cant exceed the buffer size
-	bgt	load_file_fail		; The next read might not fit into the buffer so stop reading
+	; TODO(davepoo2): We need to know the size of the buffer to do this test correctly
+	;cmpi.l	#MemNeeded_Files_Chip-ReadFileChunkSize,d4	; Test that the amount to read cant exceed the buffer size
+	;bgt	load_file_fail		; The next read might not fit into the buffer so stop reading
 	
 	move.l	(sp),d1			; d1 is the file handle
-	move.l  MemBaseChip_Files,d2	; d2 buffer to read into (using MembaseChip_Files for test)
+	move.l  a4,d2			; d2 buffer to read into
 	add.l	d4,d2			; offset to the next chunk to read
 	move.l	#ReadFileChunkSize,d3	; d3 buffer length	
 	jsr	_LVORead(a6)		; read the next chunk of data
@@ -282,14 +307,12 @@ load_file_fail
 	move.l	(sp)+,d1		; close expects file handle in d1 (pop off the stack)
 	jsr 	_LVOClose(a6)		; returns success in d0 
 	bra 	MemError		; we failed to read the file, so quit out now after free memory	
-load_file_end
-
-setup_file_variables
-	lea	variables(pc),a5
-	move.l	MemBaseChip_Files,d0	
-	move.l	d0,levelmusic(a5)	; store the pointer to the loaded levelmusic	
+load_file_end	
+	move.l	d4,d0			; d0 = the number of bytes read from the file
+	rts
 
 *******************************************************************************
+all_assets_loaded
 
 	move.l	MemBase,d0		restore d0 to the memory we allocated from the system
 	lea	variables(pc),a5	a5 is the variables pointer
@@ -3065,6 +3088,9 @@ MemError
 	
 	move.l	MemBaseFast_Files,a1	the block to free
 	jsr	_LVOFreeVec(a6)
+
+	move.l	MemBaseFast_AssetList,a1	the block to free
+	jsr _LVOFreeVec(a6)
 	
 	move.l	GraphicsBase,a1	
 	jsr	_LVOCloseLibrary(a6)
@@ -3192,6 +3218,7 @@ Level3Vector		dc.l	0
 SystemInts		dc.w	0
 SystemDMA		dc.w	0
 MemBase			dc.l	0
+MemBaseFast_AssetList	dc.l	0
 MemBaseChip_Files	dc.l	0
 MemBaseFast_Files	dc.l	0
 DOSBase			dc.l	0
