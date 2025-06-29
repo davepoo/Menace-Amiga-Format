@@ -1189,9 +1189,7 @@ fire	tst.w	fire.delay(a5)
 	move.w	#firedelay,fire.delay(a5)
 	tst.b	firekey(a5)
 	beq	test.missiles
-	rts
 fire.end
-	move.w	#firedelay,fire.delay(a5)
 	rts
 	
 get.firekey
@@ -2199,7 +2197,7 @@ copyloop
 update.missiles
 	tst.w	fire.delay(a5)
 	beq	.skip
-	subq.w	#1,fire.delay(a5)
+	subq.w	#1,fire.delay(a5)	
 
 .skip	move.l	#missiletable,a0		used for erasing 
 	move.w	level.number(a5),d0
