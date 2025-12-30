@@ -20,6 +20,9 @@ class MenanceTools
 
         MenaceForegroundsToPNG MenaceForegroundsToPNG = new MenaceForegroundsToPNG(args);
         MenaceForegroundsToPNG.Run();
+
+        MenaceShipToPNG MeanceShipsToPNG = new MenaceShipToPNG(args);
+        MeanceShipsToPNG.Run();
     }
 }
 
@@ -845,4 +848,184 @@ class MenaceForegroundsToPNG
             Xml.Close();
         }
     }
+};
+
+/** The raw sprite data for a single sprite read from ships.s */
+class MenaceSpriteFrameRawData
+{
+    /** The bytes read without the control words */
+    public List<byte> Bytes = new List<byte>();
+};
+
+/** The raw sprite data for a single sprite read from ships.s */
+class MenaceSpriteRawData
+{
+    /** The bytes read without the control words */
+    public List<MenaceSpriteFrameRawData> Frames = new List<MenaceSpriteFrameRawData>();
+};
+
+/** Menace ship and missles are stored in ships.s 
+    label "ship1.2" appeared to be the sprite that is used in the game
+*/
+class MenaceShipToPNG
+{
+    /** Where to read the Menace raw graphics from */
+    String DataPath;
+
+    String OutputPath;
+
+    /** The numbers read from ships.s for each ship */
+    SortedDictionary<String, MenaceSpriteRawData > SpriteRawData;
+
+    /** The Palette we read from file */
+    SourceCodeToColorPalette Palette;
+
+    public MenaceShipToPNG(string[] args)
+    {
+        Console.WriteLine("Menace 'Ships' to PNG - DavePoo2 Dec 2025 - v1.00");
+
+        if (args.Length == 0)
+        {
+            throw new Exception("Expected the first argument to be the path to the data to process");
+        }
+        else
+        {
+            const int DataPathIndex = 0;
+            DataPath = args[DataPathIndex] + "\\";
+        }
+
+        OutputPath = DataPath + "\\PNG\\";
+
+        Console.WriteLine("DataPath: " + DataPath);
+        Console.WriteLine("OutputPath: " + OutputPath);
+
+        ParseShips();
+    }
+
+    /** Initialise a data structure for the ships to be read out of the text file */
+    void ParseShips()
+    {
+        Palette = new SourceCodeToColorPalette(DataPath, "level.colours.txt");
+
+        // Load and parse the ships (images) from a text file pasted from ships.s, turn it into a list of raw numbers
+        SpriteRawData = new SortedDictionary<String, MenaceSpriteRawData >();
+        using (StreamReader ShipsStream = new StreamReader(DataPath + "ships.txt"))
+        {            
+            // each ship sprite 
+            // first 0 bytes
+            // second 184 * 2 bytes
+            // third 184 * 2 + 96 bytes
+
+            // Each sprite starts with 2 control words (set to 0 in ships.s)
+            // Each sprite ends with 2 zero control words
+
+/*
+ Memory
+ Location   16-bit Word                 Function
+ --------   -----------                 --------
+   N     Sprite control word 1       Vertical and horizontal start position
+   N+1   Sprite control word 2       Vertical stop position
+   N+2   Color descriptor low word   Color bits for line 1
+   N+3   Color descriptor high word  Color bits for line 1
+   N+4   Color descriptor low word   Color bits for line 2
+   N+5   Color descriptor high word  Color bits for line 2
+                  -
+                  -
+                  -
+         End-of-data words           Two words indicating
+                                     the next usage of this sprite     */       
+
+            //http://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node00BC.html
+
+            //const int ExpectedNumberOfBytesRead = 12 * 32 * sizeof(UInt16);
+            //BackgroundsRawData = new List<byte>(ExpectedNumberOfBytesRead);
+             
+            String CurrentSpriteName = "";
+            MenaceSpriteFrameRawData CurrentFrameRawData = new MenaceSpriteFrameRawData();
+            bool bIsReadingFrame = false;
+            String line;
+            while ((line = ShipsStream.ReadLine()) != null)
+            {    
+                if ( line == "" )
+                {
+                    continue;
+                }
+
+                String lineTrimmed = line.TrimStart();
+                while( lineTrimmed.Contains("\t\t") )
+                {
+                    lineTrimmed = lineTrimmed.Replace("\t\t", "\t");
+                }
+
+                if ( bIsReadingFrame && lineTrimmed.Contains("DC.L\t0") )
+                {
+                    // End of the sprite frame
+                    Console.WriteLine("Finished Frame Of Sprite: " + CurrentSpriteName + " NumBytes: " + CurrentFrameRawData.Bytes.Count );
+                    SpriteRawData[CurrentSpriteName].Frames.Add( CurrentFrameRawData );
+                    bIsReadingFrame = false;
+                    CurrentFrameRawData = new MenaceSpriteFrameRawData();
+                }
+                else if ( bIsReadingFrame == false && lineTrimmed.StartsWith("ship") )
+                {
+                    String[] StartLineSplit = lineTrimmed.Split( "\t" );
+
+                    CurrentSpriteName = "";
+                    if ( StartLineSplit.Length == 3 )
+                    {
+                        CurrentSpriteName = StartLineSplit[0];  // name of sprite
+                        String DCL = StartLineSplit[1];         // DC.L
+                        String Zero = StartLineSplit[2];         // 0    
+                        
+                        Console.WriteLine("Starting Read Of Sprite: " + CurrentSpriteName);
+                        SpriteRawData.Add( CurrentSpriteName, new MenaceSpriteRawData() );
+                        CurrentFrameRawData = new MenaceSpriteFrameRawData();
+                        bIsReadingFrame = true;
+                        continue;   // This line has no data (it's the 2 control words for the sprite)
+                    }
+                    else
+                    {
+                        continue;   //unrecognised line
+                    }
+                }
+                else if ( CurrentSpriteName != "" && lineTrimmed.StartsWith("DC.L\t0") )
+                {
+                    // Start of a new sprite frame
+                    Console.WriteLine("Started Frame Of Sprite: " + CurrentSpriteName);
+                    bIsReadingFrame = true;
+                    continue;       // go to the next line, as this was just the end words                
+                }                
+
+                //Console.WriteLine(line);
+
+                if ( CurrentSpriteName != "" && bIsReadingFrame )
+                {
+                    String[] TextAsHex = lineTrimmed.Replace("DC.W", "").Split(",");
+                    for (int i = 0; i < TextAsHex.Length; i++)
+                    {
+                        TextAsHex[i] = TextAsHex[i].Trim();
+                        Debug.Assert(TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $");
+                        TextAsHex[i] = TextAsHex[i].Replace("$", "");
+                        int HexValue = int.Parse(TextAsHex[i], System.Globalization.NumberStyles.HexNumber);
+                        CurrentFrameRawData.Bytes.Add((byte)((HexValue >>> 8) & 0xFF));
+                        CurrentFrameRawData.Bytes.Add((byte)(HexValue & 0xFF));
+
+                        //Console.WriteLine(TextAsHex[i] + " = " + HexValue);
+                    }
+
+                    Debug.Assert(CurrentFrameRawData.Bytes.Count > 0, "Expected some bytes to be read");
+                }
+            }
+        }
+    }
+
+    public void Run() 
+    {
+        WriteShipsToPNG();
+    }
+
+    void WriteShipsToPNG()
+    {
+        // TODO(davepoo2): implement converting the raw data into PNG
+    }
+
 };
