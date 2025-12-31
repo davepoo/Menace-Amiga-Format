@@ -4,6 +4,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml;
+using Microsoft.VisualBasic;
 
 // DavePoo2 - May 2025
 // Script to Convert Menace "Aliens" file back into an RGB PNG for each alien graphic stored in the file.
@@ -850,18 +851,27 @@ class MenaceForegroundsToPNG
     }
 };
 
-/** The raw sprite data for a single sprite read from ships.s */
-class MenaceSpriteFrameRawData
+/** The raw sprite data for a single sprite bitplane read from ships.s */
+class MenaceSpritBitplaneRawData
 {
     /** The bytes read without the control words */
     public List<byte> Bytes = new List<byte>();
+
+    /** All menace sprites are this fixed width */
+    public readonly static int SpriteWidthInPixels = 16;
+
+    public int HeightInPixels() 
+    {
+        const int PixelsPerByte = 4;
+        return (Bytes.Count * PixelsPerByte) / SpriteWidthInPixels;
+    }
 };
 
 /** The raw sprite data for a single sprite read from ships.s */
 class MenaceSpriteRawData
 {
     /** The bytes read without the control words */
-    public List<MenaceSpriteFrameRawData> Frames = new List<MenaceSpriteFrameRawData>();
+    public List<MenaceSpritBitplaneRawData> BitPlanes = new List<MenaceSpritBitplaneRawData>();
 };
 
 /** Menace ship and missles are stored in ships.s 
@@ -941,7 +951,7 @@ class MenaceShipToPNG
             //BackgroundsRawData = new List<byte>(ExpectedNumberOfBytesRead);
              
             String CurrentSpriteName = "";
-            MenaceSpriteFrameRawData CurrentFrameRawData = new MenaceSpriteFrameRawData();
+            MenaceSpritBitplaneRawData CurrentBitplaneRawData = new MenaceSpritBitplaneRawData();
             bool bIsReadingFrame = false;
             String line;
             while ((line = ShipsStream.ReadLine()) != null)
@@ -960,10 +970,10 @@ class MenaceShipToPNG
                 if ( bIsReadingFrame && lineTrimmed.Contains("DC.L\t0") )
                 {
                     // End of the sprite frame
-                    Console.WriteLine("Finished Frame Of Sprite: " + CurrentSpriteName + " NumBytes: " + CurrentFrameRawData.Bytes.Count );
-                    SpriteRawData[CurrentSpriteName].Frames.Add( CurrentFrameRawData );
+                    Console.WriteLine("Finished Frame Of Sprite: " + CurrentSpriteName + " NumBytes: " + CurrentBitplaneRawData.Bytes.Count );
+                    SpriteRawData[CurrentSpriteName].BitPlanes.Add( CurrentBitplaneRawData );
                     bIsReadingFrame = false;
-                    CurrentFrameRawData = new MenaceSpriteFrameRawData();
+                    CurrentBitplaneRawData = new MenaceSpritBitplaneRawData();
                 }
                 else if ( bIsReadingFrame == false && lineTrimmed.StartsWith("ship") )
                 {
@@ -978,7 +988,7 @@ class MenaceShipToPNG
                         
                         Console.WriteLine("Starting Read Of Sprite: " + CurrentSpriteName);
                         SpriteRawData.Add( CurrentSpriteName, new MenaceSpriteRawData() );
-                        CurrentFrameRawData = new MenaceSpriteFrameRawData();
+                        CurrentBitplaneRawData = new MenaceSpritBitplaneRawData();
                         bIsReadingFrame = true;
                         continue;   // This line has no data (it's the 2 control words for the sprite)
                     }
@@ -1006,13 +1016,13 @@ class MenaceShipToPNG
                         Debug.Assert(TextAsHex[i].StartsWith("$"), TextAsHex[i] + " doesn't start with $");
                         TextAsHex[i] = TextAsHex[i].Replace("$", "");
                         int HexValue = int.Parse(TextAsHex[i], System.Globalization.NumberStyles.HexNumber);
-                        CurrentFrameRawData.Bytes.Add((byte)((HexValue >>> 8) & 0xFF));
-                        CurrentFrameRawData.Bytes.Add((byte)(HexValue & 0xFF));
+                        CurrentBitplaneRawData.Bytes.Add((byte)((HexValue >>> 8) & 0xFF));
+                        CurrentBitplaneRawData.Bytes.Add((byte)(HexValue & 0xFF));
 
                         //Console.WriteLine(TextAsHex[i] + " = " + HexValue);
                     }
 
-                    Debug.Assert(CurrentFrameRawData.Bytes.Count > 0, "Expected some bytes to be read");
+                    Debug.Assert(CurrentBitplaneRawData.Bytes.Count > 0, "Expected some bytes to be read");
                 }
             }
         }
@@ -1025,7 +1035,84 @@ class MenaceShipToPNG
 
     void WriteShipsToPNG()
     {
-        // TODO(davepoo2): implement converting the raw data into PNG
+        // Go over the bytes for each sprite bitplane.
+        // Each sprite stores 2 bitplanes per sprite (to get 16 colours)
+        //const String FrameName = "ship1.2";
+        const int NumBitplanesPerSprite = 2;
+        foreach ( String FrameName in SpriteRawData.Keys )
+        {
+            for( int BitplaneIndex = 0; 
+                BitplaneIndex < SpriteRawData[FrameName].BitPlanes.Count; 
+                BitplaneIndex += NumBitplanesPerSprite )
+            {                 
+                var Bitplane0 = SpriteRawData[FrameName].BitPlanes[BitplaneIndex];
+                var Bitplane1 = SpriteRawData[FrameName].BitPlanes[BitplaneIndex + 1];
+
+                Debug.Assert(Bitplane0.HeightInPixels() == Bitplane1.HeightInPixels(), "Expected both bitplanes to have the same height");
+
+                // Turn this sprite into a PNG
+                String FrontBack = BitplaneIndex == 0 ? "Back" : "Front";   //Sprites are split into 2 x 16 pixel wide sprites, back of ship is stored first
+                String FileName = FrameName + "_" + FrontBack + ".png";
+                int HeightInPixels = Bitplane0.HeightInPixels();
+                Console.WriteLine("Writing: " + FileName + " Height=" + HeightInPixels);
+
+                Bitmap bmp = new(
+                    MenaceSpritBitplaneRawData.SpriteWidthInPixels,
+                    HeightInPixels,
+                    PixelFormat.Format8bppIndexed);
+                Palette.WritePaletteToImage( bmp );
+                BitmapData BmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                        ImageLockMode.ReadWrite, bmp.PixelFormat);
+
+
+                int y = 0;
+                const int BytesPerPixel = 4;
+                for( int ByteIndex = 0; ByteIndex < Bitplane0.Bytes.Count; ByteIndex += BytesPerPixel )
+                {
+                    if ( y >= bmp.Height )
+                    {
+                        Console.WriteLine("Error Writing: " + FileName + " (Too many y)");
+                        break;  
+                    }
+
+                    //Console.WriteLine("Reading Frame: " + Byte);
+
+                    // Read the sprite word (2 words per line), and from 2 bitplanes (2 per sprite for 16 colours)
+                    int wLow0 = (Bitplane0.Bytes[ByteIndex + 0] << 8) | (Bitplane0.Bytes[ByteIndex + 1]);  //build low word bp 0
+                    int wHigh0 = (Bitplane0.Bytes[ByteIndex + 2] << 8) | (Bitplane0.Bytes[ByteIndex + 3]); //build high word bp 0
+
+                    int wLow1 = (Bitplane1.Bytes[ByteIndex + 0] << 8) | (Bitplane1.Bytes[ByteIndex + 1]);  //build low word bp 1
+                    int wHigh1 = (Bitplane1.Bytes[ByteIndex + 2] << 8) | (Bitplane1.Bytes[ByteIndex + 3]); //build high word bp 1
+
+                    for( int x = 0; x < MenaceSpritBitplaneRawData.SpriteWidthInPixels; ++x )
+                    {
+                        // turn the bits in the 4 words into the pixel index
+                        int InvX = (MenaceSpritBitplaneRawData.SpriteWidthInPixels-1) - x; 
+                        byte b0 = (byte)(((wLow0 >>> InvX) & 0x1) | ((wHigh0 >>> (InvX-1)) & 0x2)); 
+                        byte b1 = (byte)(((wLow1 >>> InvX) & 0x1) | ((wHigh1 >>> (InvX-1)) & 0x2)); 
+                        byte b = (byte)(b0 | (byte)(b1 << 2));
+
+                        // write the index to the bmp
+                        const int PaletteIndexOffset = 16;       // Sprites use the higher 16 of the 32 colours in the palette
+                        byte PixelIndex = b == 0 ? b : (byte)(b + PaletteIndexOffset);  // 0 means transparent
+                        IntPtr Pixel = BmpData.Scan0 + x + (y * bmp.Width);
+                        Marshal.WriteByte(Pixel, PixelIndex);
+                        if ( x >= bmp.Width )
+                        {
+                            Console.WriteLine("Error Writing: " + FileName + " (Too many x)");
+                            break;  
+                        }
+                    }
+
+                    y++;
+                }
+
+                bmp.UnlockBits(BmpData);
+
+                Console.WriteLine("Writing: " + FileName);
+                bmp.Save(OutputPath + FileName, ImageFormat.Png);
+            }
+        }
     }
 
 };
