@@ -237,7 +237,7 @@ setup_file_variables
 	adda 	d6,a5
 	move.l	a4,levelmusic(a5)	; store the pointer to the loaded (levelmusic = first pointer in the table)
 
-	//TOOD(davepoo2) : this advance of a4 doesn't work because it's being overwritten above!
+	;TOOD(davepoo2) : this advance of a4 doesn't work because it's being overwritten above!
 	adda	d0,a4				; d0 = number of bytes read. advance the pointer forward
 	
 
