@@ -26,6 +26,9 @@
 * - Loading .mod file using AmigaDos library before the system takeover 
 * - Asset list has names of files and whether the load them into chip/fast RAM
 * - Allocating some fast RAM for assets that dont require to be in chip RAM
+* ---------------------
+* Updates 2025 by DavePoo2
+* - Adding an asset loader that can load files into chip/fast ram before system shutdown
 *
 *****************************************************************************
 	
@@ -211,25 +214,33 @@ read_line_asset_list
 
 	cmpi.b	#MEMF_FAST,d1
 	beq 	.load_into_fastmem
+	move.l	MemBaseChip_Files_Size(pc),d0
 	move.l	MemBaseChip_Files,a4
-	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
-	bra setup_file_variables	
-.load_into_fastmem	
-	move.l	MemBaseFast_Files,a4
-	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
+	adda	d0,a4							; load in after that the last file we loaded
+	jsr 	load_asset_file					; a0 contains the string filename to load, a4 the address to load into
+	; d0 now contains the number of bytes loaded
+	; update the number of bytes that have been read in
+	move.l	MemBaseChip_Files_Size(pc),d1
+	add.w	d1,d0
+	move.l	d0,MemBaseChip_Files_Size
+	bra setup_file_variables
 
+.load_into_fastmem	
+	move.l	MemBaseFast_Files_Size(pc),d0
+	move.l	MemBaseFast_Files,a4
+	adda	d0,a4					; load in after that the last file we loaded
+	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
+	; d0 now contains the number of bytes loaded
+	; update the number of bytes that have been read in
+	move.l	MemBaseFast_Files_Size(pc),d1
+	add.w	d1,d0
+	move.l	d0,MemBaseFast_Files_Size
 	
-	; TODO(davepoo2) : find the address of the next space in chip/fast memory to load into	
-	; TODO(davepoo2) : offset by 4 to store the size of the next file
-	; TODO(davepoo2) : load the file in memory to the address given
-	; TODO(davepoo2) : store the address to file so the game can access the asset directly e.g. levelmusic needs to point to the start of spice.mod file in chip memory 
-	; TODO(davepoo2) : make it so you can jsr to the load file method with the correct parameters and it returns the number of bytes loaded.
-	
+	; TODO(davepoo2) : make sure when we update the address of the next asset in memory, we align up to 4 bytes
 		
-	; TOOD(davepoo2) : the value stored in d6 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet)
+	; TOOD(davepoo2) : the value stored in d6 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet), but we are using it as the asset ID instead
 	; TODO(davepoo2) : need to handle the correct buffering of the line (what if we dont have enough of the asset list file)
 	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash
-	
 	
 setup_file_variables
 	lea	variables(pc),a5
@@ -237,9 +248,6 @@ setup_file_variables
 	adda 	d6,a5
 	move.l	a4,levelmusic(a5)	; store the pointer to the loaded (levelmusic = first pointer in the table)
 
-	;TOOD(davepoo2) : this advance of a4 doesn't work because it's being overwritten above!
-	adda	d0,a4				; d0 = number of bytes read. advance the pointer forward
-	
 
 	; restore d2 and d0 from the stack before we loop to read the next asset
 	move.l	(sp)+,d2		; restore d2 from stack, the address of the next byte to read in the asset list				
@@ -367,7 +375,7 @@ all_assets_loaded
 	move	S_VBR,a0	  ; a0 Vector Base Register
 	moveq	#1,d0		  ; d0 PAL/NTSC - 0 is NTSC
 	jsr	_mt_install	  ; setup cia interrupts
-	move.l	levelmusic(a5),d0 ; address of the mod to play
+	move.l	loaded_asset1(a5),d0 ; address of the mod to play
 	move.l	d0,a0 		  ; a0 pointer to mod file to play
 	moveq	#0,d0		  ; d0 mod start location (pattern 0) 
 	move	d0,a1		  ; a1 pointer to the samples
@@ -2916,8 +2924,6 @@ levelmusic		RS.L	1	memory address of the level music .mod file
 loaded_asset1	RS.L	1	memory address of the next asset
 loaded_asset2	RS.L	1	memory address of the next asset
 loaded_asset3	RS.L	1	memory address of the next asset
-loaded_asset4	RS.L	1	memory address of the next asset
-loaded_asset5	RS.L	1	memory address of the next asset
 
 vars.length	RS.B	0
 variables	DS.B	vars.length
@@ -3230,6 +3236,8 @@ MemBase			dc.l	0
 MemBaseFast_AssetList	dc.l	0
 MemBaseChip_Files	dc.l	0
 MemBaseFast_Files	dc.l	0
+MemBaseChip_Files_Size	dc.l	0		; number of bytes used for loaded chip ram files
+MemBaseFast_Files_Size	dc.l	0		; number of bytes used for loaded fast ram files
 DOSBase			dc.l	0
 GraphicsBase		dc.l	0
 
