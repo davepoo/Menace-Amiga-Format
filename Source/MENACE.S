@@ -68,7 +68,7 @@ MemNeeded		equ	BackgroundMemory+ForegroundMemory
 ; Needs to be enough memory to hold all the files loaded into chip RAM
 ; Do NOT use spaces in constant sums as DevPac will treat everthing after
 ; the space as a comment
-MemNeeded_Files_Chip 	equ 	1024*50
+MemNeeded_Files_Chip 	equ 	1024*150
 MemNeeded_Files_Fast	equ		1024*50		
 MemNeeded_AssetList_Fast equ	1024*4
 
@@ -173,7 +173,7 @@ read_line_asset_list
 	bra	.decode_digit		; move to the next digit 	
 
 .next_column
-	; d3 = the number of assets to load for this set
+	; d6 = the number of assets to load for this set
 	; next character from the stream is either C or F for chip or fast ram for the asset
 	clr.l	d1
 	move.b (a0)+,d1
@@ -188,7 +188,7 @@ read_line_asset_list
 	bra	.read_filename
 
 .read_filename		
-	; d3 = the number of assets to load
+	; d6 = the number of assets to load
 	; d1 = #MEMF_FAST or #MEMF_CHIP
 	; a0 = start of the filename string
 	
@@ -226,14 +226,20 @@ read_line_asset_list
 	; TODO(davepoo2) : make it so you can jsr to the load file method with the correct parameters and it returns the number of bytes loaded.
 	
 		
-	; TOOD(davepoo2) : the value stored in d3 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet)
+	; TOOD(davepoo2) : the value stored in d6 needs to be used to decide how many versions of the asset to load  (havent loaded the name of the asset yet)
 	; TODO(davepoo2) : need to handle the correct buffering of the line (what if we dont have enough of the asset list file)
 	; TODO(davepoo2) : if we dont read enough of the buffer to get a newline then this will crash
 	
 	
 setup_file_variables
 	lea	variables(pc),a5
-	move.l	a4,levelmusic(a5)	; store the pointer to the loaded levelmusic
+	mulu	#4,d6				; multiply by 4 = size of pointer .l
+	adda 	d6,a5
+	move.l	a4,levelmusic(a5)	; store the pointer to the loaded (levelmusic = first pointer in the table)
+
+	//TOOD(davepoo2) : this advance of a4 doesn't work because it's being overwritten above!
+	adda	d0,a4				; d0 = number of bytes read. advance the pointer forward
+	
 
 	; restore d2 and d0 from the stack before we loop to read the next asset
 	move.l	(sp)+,d2		; restore d2 from stack, the address of the next byte to read in the asset list				
@@ -2906,7 +2912,12 @@ shipaddress	RS.L	1	ship animation address
 alien.buffer	RS.L	18
 explosion.ptr	RS.L	1
 guardian.data	RS.L	1
-levelmusic	RS.L	1	memory address of the level music .mod file
+levelmusic		RS.L	1	memory address of the level music .mod file
+loaded_asset1	RS.L	1	memory address of the next asset
+loaded_asset2	RS.L	1	memory address of the next asset
+loaded_asset3	RS.L	1	memory address of the next asset
+loaded_asset4	RS.L	1	memory address of the next asset
+loaded_asset5	RS.L	1	memory address of the next asset
 
 vars.length	RS.B	0
 variables	DS.B	vars.length
