@@ -27,7 +27,7 @@
 * - Asset list has names of files and whether the load them into chip/fast RAM
 * - Allocating some fast RAM for assets that dont require to be in chip RAM
 * ---------------------
-* Updates 2025 by DavePoo2
+* Updates 2026 by DavePoo2
 * - Adding an asset loader that can load files into chip/fast ram before system shutdown
 *
 *****************************************************************************
@@ -208,6 +208,7 @@ read_line_asset_list
 	; can be used in the OS call to load the file
 	move.b	#0,-1(a1)		; convert newline to 0 delimited string in memory
 
+break111
 .load_asset_file
 	move.l	d0,-(sp)				; store d0 on the stack, the number of bytes left to read in the asset list
 	move.l	a1,-(sp)				; store a1 on the stack, the address of the next byte to read in the asset list				
@@ -375,7 +376,7 @@ all_assets_loaded
 	move	S_VBR,a0	  ; a0 Vector Base Register
 	moveq	#1,d0		  ; d0 PAL/NTSC - 0 is NTSC
 	jsr	_mt_install	  ; setup cia interrupts
-	move.l	loaded_asset1(a5),d0 ; address of the mod to play
+	move.l	levelmusic(a5),d0 ; address of the mod to play
 	move.l	d0,a0 		  ; a0 pointer to mod file to play
 	moveq	#0,d0		  ; d0 mod start location (pattern 0) 
 	move	d0,a1		  ; a1 pointer to the samples
@@ -733,10 +734,12 @@ GameInit
 	lea	scroll.value(pc),a0
 	move.w	#$ff,2(a0)
 
-	move.l	#panel+32,d0		put the address of the panel
+	move.l panel(a5),d0		put the address of the panel in d0
+	add.l  #32,d0			put the address of the panel in d0
 	lea	rastersplit2(pc),a1	graphics into the copper
 	moveq	#3,d1			the panel is 4 planes
-setup1	move.w	d0,6(a1)
+setup1	
+	move.w	d0,6(a1)
 	swap	d0
 	move.w	d0,2(a1)
 	swap	d0
@@ -980,8 +983,8 @@ collect.end
 
 
 max.energy
-	move.l	#panel,a0			d0 = offset
-	add.w	d0,a0
+	move.l	panel(a5),a0		; put the address of the panel in a0
+	adda	d0,a0				; d0 = offset
 	moveq	#7,d1
 max.loop
 	or.w	#$5555,(a0)			set all energy bits
@@ -1376,8 +1379,9 @@ initlaser
 	bra	test.mult1
 
 decrease.energy
-	move.l	#panel,a1			d0 = offset
-	add.w	d0,a1				d1 = energy value (0-128)
+	move.l	panel(a5),a1		a1 = panel address
+	; d0 = offset
+	adda	d0,a1				d1 = energy value (0-128)
 ;						324 for ship energy
 ;						676 for canons
 	lsr.w	#4,d1				1028 for lasers
@@ -2921,8 +2925,8 @@ alien.buffer	RS.L	18
 explosion.ptr	RS.L	1
 guardian.data	RS.L	1
 levelmusic		RS.L	1	memory address of the level music .mod file
+panel			RS.L	1	memory address of the next asset
 loaded_asset1	RS.L	1	memory address of the next asset
-loaded_asset2	RS.L	1	memory address of the next asset
 loaded_asset3	RS.L	1	memory address of the next asset
 
 vars.length	RS.B	0
@@ -3256,7 +3260,7 @@ graphics	incbin	foregrounds
 shipbase	include	ships.s
 paths		include	paths.s
 map		incbin	map
-panel		incbin	panel
+;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loaded
 aliens		incbin	aliens
 bonus.sprite	include	bonus.s
 mine		include mine.s

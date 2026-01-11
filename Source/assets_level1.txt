@@ -1,3 +1,4 @@
 0,C,spice.mod
-1,C,jester_-_1990_does_it_matter.mod
+1,C,panel
+2,C,jester_-_1990_does_it_matter.mod
 
