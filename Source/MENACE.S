@@ -208,7 +208,6 @@ read_line_asset_list
 	; can be used in the OS call to load the file
 	move.b	#0,-1(a1)		; convert newline to 0 delimited string in memory
 
-break111
 .load_asset_file
 	move.l	d0,-(sp)				; store d0 on the stack, the number of bytes left to read in the asset list
 	move.l	a1,-(sp)				; store a1 on the stack, the address of the next byte to read in the asset list				
@@ -217,24 +216,26 @@ break111
 	beq 	.load_into_fastmem
 	move.l	MemBaseChip_Files_Size(pc),d0
 	move.l	MemBaseChip_Files,a4
-	adda	d0,a4							; load in after that the last file we loaded
+	adda.l	d0,a4							; load in after that the last file we loaded
 	jsr 	load_asset_file					; a0 contains the string filename to load, a4 the address to load into
 	; d0 now contains the number of bytes loaded
 	; update the number of bytes that have been read in
 	move.l	MemBaseChip_Files_Size(pc),d1
-	add.w	d1,d0
+	add.l	d1,d0
+	align_up_4	d0			; round up to 4 byte boundary
 	move.l	d0,MemBaseChip_Files_Size
 	bra setup_file_variables
 
 .load_into_fastmem	
 	move.l	MemBaseFast_Files_Size(pc),d0
 	move.l	MemBaseFast_Files,a4
-	adda	d0,a4					; load in after that the last file we loaded
+	adda.l	d0,a4					; load in after that the last file we loaded
 	jsr 	load_asset_file			; a0 contains the string filename to load, a4 the address to load into
 	; d0 now contains the number of bytes loaded
 	; update the number of bytes that have been read in
 	move.l	MemBaseFast_Files_Size(pc),d1
-	add.w	d1,d0
+	add.l	d1,d0
+	align_up_4	d0			; round up to 4 byte boundary
 	move.l	d0,MemBaseFast_Files_Size
 	
 	; TODO(davepoo2) : make sure when we update the address of the next asset in memory, we align up to 4 bytes
@@ -247,7 +248,7 @@ setup_file_variables
 	lea	variables(pc),a5
 	mulu	#4,d6				; multiply by 4 = size of pointer .l
 	adda 	d6,a5
-	move.l	a4,levelmusic(a5)	; store the pointer to the loaded (levelmusic = first pointer in the table)
+	move.l	a4,first_loaded_asset(a5)	; store the pointer to the loaded (first_loaded_asset = first pointer in the table)
 
 
 	; restore d2 and d0 from the stack before we loop to read the next asset
@@ -711,7 +712,8 @@ GameInit
 	move.w	#324-12,d0
 	bsr	max.energy
 	move.l	#explosion.sequence,explosion.ptr(a5)
-	move.l	#guardian+384,guardian.data(a5)
+	move.l	guardian_asset(a5),guardian.data(a5)
+	add.l	#384,guardian.data(a5)
 	move.w	#999,guardian.count(a5)
 	
 	lea	copperlist(pc),a1
@@ -2629,7 +2631,7 @@ draw.guardian
 	beq	no.draw
 	mulu	#24,d0
 	ext.l	d0
-	move.l	#guardian,a0
+	move.l	guardian_asset(a5),a0
 	add.l	d0,a0
 	move.l	guardian.data(a5),a1
 	lea	rasters+12(a5),a4
@@ -2924,10 +2926,12 @@ shipaddress	RS.L	1	ship animation address
 alien.buffer	RS.L	18
 explosion.ptr	RS.L	1
 guardian.data	RS.L	1
-levelmusic		RS.L	1	memory address of the level music .mod file
+first_loaded_asset	RS.L	0
+levelmusic		RS.L	1	memory address of the level music .mod file (1st asset)
 panel			RS.L	1	memory address of the next asset
-loaded_asset1	RS.L	1	memory address of the next asset
-loaded_asset3	RS.L	1	memory address of the next asset
+guardian_asset	RS.L	1	memory address of the next asset
+levelmusic2		RS.L	1	memory address of the next asset
+
 
 vars.length	RS.B	0
 variables	DS.B	vars.length
@@ -3260,11 +3264,11 @@ graphics	incbin	foregrounds
 shipbase	include	ships.s
 paths		include	paths.s
 map		incbin	map
-;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loaded
+;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 aliens		incbin	aliens
 bonus.sprite	include	bonus.s
 mine		include mine.s
-guardian	incbin	guardian
+;guardian	incbin	guardian	; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 
 
 missiletable	ds.b	512

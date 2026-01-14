@@ -78,6 +78,16 @@ These are the settings I am using to assemble correctly in DevPac 3 on the Amiga
 
 ![Assemble To Disk Screenshot](Images/DevPac3_AssembleToDisk.png)
 
+# Assembling on PC (Win64)
+
+The game can be assembed on a PC using VASM http://sun.hasenbraten.de/vasm/
+You need to use the -devpac setting to obtain the compatiblity required to assemble correctly and -m608020 due to the use of some 68020 instructions. You must also provide the path to the Amiga OS NDK 3.2
+
+Example Assemble:
+
+vasmm68k_mot_Win64\vasmm68k_mot.exe -devpac -m68020 -Fhunkexe -o menace -nosym -I NDK3.2\Include_I menace.s
+
+
 # Other Useful Resources
 
 * https://www.amazon.co.uk/Bare-Metal-Amiga-Programming-OCS-ECS/dp/B09GJQ3SF6 - Edwin Th van den Oosterkamp (Author) - Bare-Metal Amiga Programming: For OCS, ECS and AGA

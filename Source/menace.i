@@ -22,6 +22,12 @@ blitter_wait MACRO
 	btst.b	#DMAB_BLTDONE-8,dmaconr(a6)
 	bne	\@
 	ENDM
+
+; round up to 4 byte boundary, add 3, remove last 2 binary digits
+align_up_4 MACRO
+	addq	#3,\1
+	and.l	#$FFFFFFFC,\1
+	ENDM
 	
 MENACE_ENABLE_MUSIC SET 1	
 	
