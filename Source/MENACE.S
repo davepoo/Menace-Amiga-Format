@@ -693,7 +693,7 @@ drawb1	move.w	(a6),(a1)		draw into both the screens
 **************************************************************************
 
 GameInit
-	lea	map,a0
+	move.l	map(a5),a0
 	move.l	a0,fgndpointer(a5)	set up the map index
 	move.w	#23,pf1count(a5)	width of the foreground in words
 	move.w	#24,pf2count(a5)	width of the background in words
@@ -2950,6 +2950,7 @@ guardian_asset	RS.L	1	memory address of the next asset
 levelmusic2		RS.L	1	memory address of the next asset
 aliens			RS.L	1	memory address of the next asset
 graphics		RS.L	1	memory address of the "foregrounds" asset
+map				RS.L	1	memory address of the foregrounds "map" asset
 
 
 vars.length	RS.B	0
@@ -3281,8 +3282,8 @@ FileName_Level1_Assets	dc.b	'assets_level1.txt',0
 
 shipbase	include	ships.s
 ;graphics	incbin	foregrounds	; NOTE(davepoo2): removed, is now loaded from disk by asset loader
-paths		include	paths.s
-map		incbin	map
+paths		include	paths.s		
+;map		incbin	map			; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 ;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 ;aliens		incbin	aliens		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 bonus.sprite	include	bonus.s
