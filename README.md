@@ -193,6 +193,37 @@ The map is 440 tiles across by 12 tiles high.
 
 The data is encoded in columns, so the left most column of 12 blocks is stored first (top to bottom), then then 2nd column. This is to make it easier for Menace drawing routine as it only draws one column at a time.
 
+## ship Source/ships.s
+
+The main ship is encoded into a source file in ships.s
+
+The sprites are split into two 16 pixel across sprites, which are joined together in the game.
+The back of the the ship is 44 pixles high (to accomodate the outriders), the front is 22 pixels high.
+
+This is covered in [Issue 9 / Part 3](AmigaFormat/AmigaFormat009-Apr90_DaveJonesLockerPart3.pdf) of the magazine articles
+
+There are 4 versions of the ship, and each version has 3 variants for going up, down or neither (only 1 variant is shown below)
+
+| Configuration | Back         | Front    |
+|-----  |-----          | ---           |
+| 1 (no weapons)| ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship1.2_Back.png) | ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship1.2_Front.png) |  
+| 2 (with cannons)| ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship2.2_Back.png) | ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship2.2_Front.png) |
+| 3 (with lasers)| ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship3.2_Back.png) | ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship3.2_Front.png) | 
+| 4 (lasers & cannons)| ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship4.2_Back.png) | ![Foregrounds converted to a png](Tools/PC/GraphicsConverter/Data/PNG/ship4.2_Front.png) | 
+
+Therefore there are 4x3 = 12 ships, x2 because there is a front and back sprite for 24 total distinct images.
+
+A sprite has 2 bitplanes, but Menace combines 2 sprites together to get 4 bitplanes to 
+allow the ship to use 16 colors (15 + transparent)
+This means the ship uses 4 of the 8 possible Amiga sprites.
+
+The color palette in game is the last 16 colors of the 32 color palette.
+
+The sprites are stored as 
+* 2 control words to start the sprite
+* the sprite data encoded as low bitplane word, then high bitplane word
+* 2 control words to end the sprite
+
 
 
 
