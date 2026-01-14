@@ -3274,8 +3274,6 @@ GraphicsName	dc.b	'graphics.library',0
 	even
 DOSName		dc.b	'dos.library',0
 	even
-FileName_Music	dc.b	'spice.mod',0
-	even
 FileName_Level1_Assets	dc.b	'assets_level1.txt',0
 
 *******************************************************************************
