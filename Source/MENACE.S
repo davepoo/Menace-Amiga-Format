@@ -406,7 +406,7 @@ vloop	bsr	waitline223		interrupt set at vertical
 	bsr	update.missiles
 	bsr	drawfgnds
 *	bsr	print.score
-*	bsr	check.keys
+	bsr	check.keys
 	bsr	check.path
 	bra	vloop
 twoblanks	
@@ -787,6 +787,16 @@ clear.screen
 clear.scr1
 	clr.l	(a0)+
 	dbf	d0,clear.scr1
+	rts
+
+**************************************************************************
+
+check.keys
+	; cheat to kill the game by pressing right shift
+CIA_KEYBOARD equ $BFEC01
+KEYCODE_RIGHTSHIFT equ $3D
+	cmp.b #KEYCODE_RIGHTSHIFT,CIA_KEYBOARD
+	beq game.over
 	rts
 
 **************************************************************************
@@ -1996,6 +2006,13 @@ draw.alien2
 	mulu	#384,d2				from the lookup table
 	ext.l	d2				and then work out the animation
 	add.l	d2,a1				number address
+	; Add the aliens asset address in a1 to the pointer to get the right location
+	; but DONT add it this is the bonus sprite as that pointer is
+	; NOT in the aliens asset
+	tst.b	bonus.mode(a5)
+	bne	.address_correct
+	adda.l	aliens(a5),a1		; a1 is an offset from 0 to the the sprite, add in the base address of the loaded aliens asset
+.address_correct
 	move.l	a1,a2
 	add.w	#288,a2				a2 = mask address
 	bsr	drawbobs
@@ -2931,6 +2948,7 @@ levelmusic		RS.L	1	memory address of the level music .mod file (1st asset)
 panel			RS.L	1	memory address of the next asset
 guardian_asset	RS.L	1	memory address of the next asset
 levelmusic2		RS.L	1	memory address of the next asset
+aliens			RS.L	1	memory address of the next asset
 
 
 vars.length	RS.B	0
@@ -3260,12 +3278,12 @@ FileName_Level1_Assets	dc.b	'assets_level1.txt',0
 
 *******************************************************************************
 
-graphics	incbin	foregrounds
 shipbase	include	ships.s
+graphics	incbin	foregrounds
 paths		include	paths.s
 map		incbin	map
 ;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
-aliens		incbin	aliens
+;aliens		incbin	aliens		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 bonus.sprite	include	bonus.s
 mine		include mine.s
 ;guardian	incbin	guardian	; NOTE(davepoo2): removed, is now loaded from disk by asset loader
@@ -3274,7 +3292,8 @@ mine		include mine.s
 missiletable	ds.b	512
 
 alien.pointers
-explosion1	equ	aliens
+aliens_start		equ 0
+explosion1	equ	aliens_start
 guardian.eye1	equ	explosion1+(9*384)
 tadpole		equ	guardian.eye1+(4*384)
 eye		equ	tadpole+(4*384)
