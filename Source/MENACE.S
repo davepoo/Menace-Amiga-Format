@@ -582,7 +582,7 @@ drawfgnd
 	add.w	pf2offset(a5),d2	offset to each plane
 	add.w	pf2offset(a5),d3
 	moveq	#11,d7			12 blocks in height
-	move.l	#graphics,a4		a4 = base address of the graphics
+	move.l	graphics(a5),a4		a4 = base address of the graphics
 fgndloop					
 	move.l	a4,d4
 	mulu	#96,d0			96 bytes per graphic blocks
@@ -2949,6 +2949,7 @@ panel			RS.L	1	memory address of the next asset
 guardian_asset	RS.L	1	memory address of the next asset
 levelmusic2		RS.L	1	memory address of the next asset
 aliens			RS.L	1	memory address of the next asset
+graphics		RS.L	1	memory address of the "foregrounds" asset
 
 
 vars.length	RS.B	0
@@ -3279,7 +3280,7 @@ FileName_Level1_Assets	dc.b	'assets_level1.txt',0
 *******************************************************************************
 
 shipbase	include	ships.s
-graphics	incbin	foregrounds
+;graphics	incbin	foregrounds	; NOTE(davepoo2): removed, is now loaded from disk by asset loader
 paths		include	paths.s
 map		incbin	map
 ;panel		incbin	panel		; NOTE(davepoo2): removed, is now loaded from disk by asset loader
