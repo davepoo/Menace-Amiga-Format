@@ -792,10 +792,13 @@ clear.scr1
 **************************************************************************
 
 check.keys
-	; cheat to kill the game by pressing right shift
+	; cheat to kill the game by pressing Esc
 CIA_KEYBOARD equ $BFEC01
-KEYCODE_RIGHTSHIFT equ $3D
-	cmp.b #KEYCODE_RIGHTSHIFT,CIA_KEYBOARD
+KEYCODE_ESC equ $45
+	move.b CIA_KEYBOARD,d0
+	not.b d0
+	ror.b #1,d0
+	cmp.b #KEYCODE_ESC,d0
 	beq game.over
 	rts
 
